@@ -12,12 +12,17 @@ import json
 from .models import (
     Employee, Department, Evaluation, EvaluationDetail, Goal, Training,
     KPICategory, KPI, EvaluationPeriod, Competency, CompetencyAssessment,
-    GoalProgress, Report, PerformanceImprovementPlan, Notification
+    GoalProgress, Report, PerformanceImprovementPlan, Notification,
+    EmployeeProfile, EmployeeSelfEvaluation, EmployeeGoalSubmission,
+    EmployeeTrainingRequest, EmployeeLeaveRequest
 )
 from .forms import (
     EmployeeForm, EvaluationForm, EvaluationDetailFormSet, GoalForm,
     TrainingForm, DepartmentForm, KPICategoryForm, KPIForm, EvaluationPeriodForm,
-    CompetencyForm, CompetencyAssessmentForm, GoalProgressForm
+    CompetencyForm, CompetencyAssessmentForm, GoalProgressForm,
+    EmployeeProfileForm, EmployeeSelfEvaluationForm, EmployeeGoalSubmissionForm,
+    EmployeeTrainingRequestForm, EmployeeLeaveRequestForm, EmployeeLoginForm,
+    EmployeePasswordChangeForm
 )
 from .report_utils import ReportGenerator, generate_report_response
 
