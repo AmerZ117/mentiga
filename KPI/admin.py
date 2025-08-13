@@ -1,4 +1,11 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.models import User
+from django.utils.crypto import get_random_string
+from django.contrib import messages
+from django.shortcuts import redirect
+from django.urls import path, reverse
+from django.http import HttpResponseRedirect
 from django.utils.html import format_html
 from .models import (
     Department, Employee, KPICategory, KPI, EvaluationPeriod, 
@@ -16,26 +23,215 @@ class DepartmentAdmin(admin.ModelAdmin):
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
-    list_display = ['employee_id', 'full_name', 'email', 'department', 'position', 'status', 'hire_date']
-    list_filter = ['department', 'status', 'hire_date', 'gender']
+    list_display = ['employee_id', 'full_name', 'email', 'department', 'position', 'status', 'hire_date', 'has_user_account', 'user_actions']
+    list_filter = ['status', 'department', 'hire_date', 'user']
     search_fields = ['employee_id', 'first_name', 'last_name', 'email']
     ordering = ['first_name', 'last_name']
     readonly_fields = ['created_at']
+    actions = ['create_user_accounts', 'reset_passwords']
+    
     fieldsets = (
         ('Basic Information', {
-            'fields': ('employee_id', 'first_name', 'last_name', 'email', 'phone', 'gender', 'date_of_birth')
+            'fields': ('employee_id', 'first_name', 'last_name', 'email', 'phone')
         }),
         ('Employment Details', {
-            'fields': ('department', 'position', 'hire_date', 'status', 'manager', 'salary')
+            'fields': ('department', 'position', 'hire_date', 'status', 'manager')
         }),
-        ('Additional Information', {
-            'fields': ('address', 'emergency_contact', 'emergency_phone', 'user')
+        ('Personal Information', {
+            'fields': ('gender', 'date_of_birth', 'address')
+        }),
+        ('Emergency Contact', {
+            'fields': ('emergency_contact', 'emergency_phone')
+        }),
+        ('Financial Information', {
+            'fields': ('salary',)
+        }),
+        ('User Account', {
+            'fields': ('user',),
+            'description': 'Link to Django user account for employee login'
         }),
         ('System Information', {
-            'fields': ('created_at',),
-            'classes': ('collapse',)
+            'fields': ('created_at',)
         }),
     )
+    
+    def has_user_account(self, obj):
+        if obj.user:
+            return format_html('<span style="color: green;">✓ Yes</span>')
+        return format_html('<span style="color: red;">✗ No</span>')
+    has_user_account.short_description = 'User Account'
+    
+    def user_actions(self, obj):
+        if obj.user:
+            return format_html(
+                '<a class="button" href="{}">Reset Password</a>',
+                reverse('admin:reset_employee_password', args=[obj.id])
+            )
+        else:
+            return format_html(
+                '<a class="button" href="{}">Create Account</a>',
+                reverse('admin:create_employee_user', args=[obj.id])
+            )
+    user_actions.short_description = 'Actions'
+    
+    def create_user_accounts(self, request, queryset):
+        created_count = 0
+        for employee in queryset:
+            if not employee.user:
+                try:
+                    # Create username from employee_id
+                    username = employee.employee_id.lower()
+                    
+                    # Generate a random password
+                    password = get_random_string(12)
+                    
+                    # Create user account
+                    user = User.objects.create_user(
+                        username=username,
+                        email=employee.email,
+                        password=password,
+                        first_name=employee.first_name,
+                        last_name=employee.last_name
+                    )
+                    
+                    # Link user to employee
+                    employee.user = user
+                    employee.save()
+                    
+                    # Create employee profile
+                    EmployeeProfile.objects.get_or_create(employee=employee)
+                    
+                    created_count += 1
+                    
+                    # Show success message with credentials
+                    messages.success(
+                        request, 
+                        f'User account created for {employee.full_name}. '
+                        f'Username: {username}, Password: {password}'
+                    )
+                    
+                except Exception as e:
+                    messages.error(
+                        request, 
+                        f'Failed to create user account for {employee.full_name}: {str(e)}'
+                    )
+        
+        if created_count > 0:
+            messages.success(request, f'{created_count} user account(s) created successfully!')
+    
+    create_user_accounts.short_description = "Create user accounts for selected employees"
+    
+    def reset_passwords(self, request, queryset):
+        reset_count = 0
+        for employee in queryset:
+            if employee.user:
+                try:
+                    # Generate new password
+                    new_password = get_random_string(12)
+                    
+                    # Reset password
+                    employee.user.set_password(new_password)
+                    employee.user.save()
+                    
+                    reset_count += 1
+                    
+                    # Show success message with new password
+                    messages.success(
+                        request, 
+                        f'Password reset for {employee.full_name}. '
+                        f'New password: {new_password}'
+                    )
+                    
+                except Exception as e:
+                    messages.error(
+                        request, 
+                        f'Failed to reset password for {employee.full_name}: {str(e)}'
+                    )
+        
+        if reset_count > 0:
+            messages.success(request, f'{reset_count} password(s) reset successfully!')
+    
+    reset_passwords.short_description = "Reset passwords for selected employees"
+    
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:employee_id>/create-user/',
+                self.admin_site.admin_view(self.create_user_view),
+                name='create_employee_user',
+            ),
+            path(
+                '<int:employee_id>/reset-password/',
+                self.admin_site.admin_view(self.reset_password_view),
+                name='reset_employee_password',
+            ),
+        ]
+        return custom_urls + urls
+    
+    def create_user_view(self, request, employee_id):
+        try:
+            employee = Employee.objects.get(id=employee_id)
+            if not employee.user:
+                # Generate username and password
+                username = employee.employee_id.lower()
+                password = get_random_string(12)
+                
+                # Create user account
+                user = User.objects.create_user(
+                    username=username,
+                    email=employee.email,
+                    password=password,
+                    first_name=employee.first_name,
+                    last_name=employee.last_name
+                )
+                
+                # Link user to employee
+                employee.user = user
+                employee.save()
+                
+                # Create employee profile
+                EmployeeProfile.objects.get_or_create(employee=employee)
+                
+                messages.success(
+                    request, 
+                    f'User account created successfully for {employee.full_name}!<br>'
+                    f'<strong>Username:</strong> {username}<br>'
+                    f'<strong>Password:</strong> {password}<br>'
+                    f'<strong>Login URL:</strong> <a href="/employee/login/">Employee Login</a>'
+                )
+            else:
+                messages.warning(request, f'{employee.full_name} already has a user account.')
+                
+        except Exception as e:
+            messages.error(request, f'Error creating user account: {str(e)}')
+        
+        return HttpResponseRedirect(reverse('admin:KPI_employee_change', args=[employee_id]))
+    
+    def reset_password_view(self, request, employee_id):
+        try:
+            employee = Employee.objects.get(id=employee_id)
+            if employee.user:
+                # Generate new password
+                new_password = get_random_string(12)
+                
+                # Reset password
+                employee.user.set_password(new_password)
+                employee.user.save()
+                
+                messages.success(
+                    request, 
+                    f'Password reset successfully for {employee.full_name}!<br>'
+                    f'<strong>New Password:</strong> {new_password}<br>'
+                    f'<strong>Login URL:</strong> <a href="/employee/login/">Employee Login</a>'
+                )
+            else:
+                messages.error(request, f'{employee.full_name} does not have a user account.')
+                
+        except Exception as e:
+            messages.error(request, f'Error resetting password: {str(e)}')
+        
+        return HttpResponseRedirect(reverse('admin:KPI_employee_change', args=[employee_id]))
 
 @admin.register(Competency)
 class CompetencyAdmin(admin.ModelAdmin):

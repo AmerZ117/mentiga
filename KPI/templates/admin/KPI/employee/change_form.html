@@ -1,0 +1,102 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .credentials-box {
+        background: #f8f9fa;
+        border: 2px solid #28a745;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+        text-align: center;
+    }
+    .credentials-box h3 {
+        color: #28a745;
+        margin-bottom: 15px;
+    }
+    .credential-item {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 10px;
+        margin: 10px 0;
+        font-family: monospace;
+        font-size: 16px;
+    }
+    .login-url {
+        background: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 4px;
+        text-decoration: none;
+        display: inline-block;
+        margin-top: 15px;
+    }
+    .login-url:hover {
+        background: #0056b3;
+        color: white;
+        text-decoration: none;
+    }
+    .warning-box {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 15px 0;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{{ block.super }}
+
+{% if original.user %}
+    <div class="credentials-box">
+        <h3>✅ Employee Login Credentials</h3>
+        <p><strong>Employee:</strong> {{ original.full_name }}</p>
+        <div class="credential-item">
+            <strong>Username:</strong> {{ original.user.username }}
+        </div>
+        <div class="credential-item">
+            <strong>Email:</strong> {{ original.user.email }}
+        </div>
+        <p><em>Password was set when account was created. Use "Reset Password" action to generate new password.</em></p>
+        <a href="/employee/login/" class="login-url" target="_blank">
+            🔐 Go to Employee Login
+        </a>
+    </div>
+{% else %}
+    <div class="warning-box">
+        <h3>⚠️ No User Account Created</h3>
+        <p>This employee does not have a login account yet.</p>
+        <p>Use the "Create Account" action button above to create login credentials.</p>
+        <p><strong>Note:</strong> Employee ID will be used as username, and a random password will be generated.</p>
+    </div>
+{% endif %}
+
+<div style="margin: 20px 0; padding: 15px; background: #e9ecef; border-radius: 8px;">
+    <h4>📋 Quick Actions</h4>
+    <ul style="margin: 0; padding-left: 20px;">
+        <li><strong>Create Account:</strong> Generates username (from Employee ID) and random password</li>
+        <li><strong>Reset Password:</strong> Generates new random password for existing account</li>
+        <li><strong>Bulk Actions:</strong> Select multiple employees and create accounts for all</li>
+    </ul>
+</div>
+
+<div style="margin: 20px 0; padding: 15px; background: #d1ecf1; border-radius: 8px;">
+    <h4>💡 Management Commands</h4>
+    <p>Use these commands in terminal for bulk operations:</p>
+    <code style="background: white; padding: 5px; border-radius: 3px;">
+        python manage.py create_employee_accounts --all
+    </code><br>
+    <code style="background: white; padding: 5px; border-radius: 3px;">
+        python manage.py create_employee_accounts --department "IT"
+    </code><br>
+    <code style="background: white; padding: 5px; border-radius: 3px;">
+        python manage.py create_employee_accounts --employee-id "EMP001"
+    </code>
+</div>
+{% endblock %}
