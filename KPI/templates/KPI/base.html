@@ -98,54 +98,20 @@
             border: 1px solid #E0E0E0;
             box-shadow: 0 1px 3px rgba(0,0,0,0.08);
             border-radius: 6px;
-            background-color: white;
-        }
-        
-        .card-header {
-            background-color: #F5F5F5;
-            color: var(--mentiga-gray);
-            border-bottom: 1px solid #E0E0E0;
-            border-radius: 6px 6px 0 0 !important;
-            font-weight: 600;
-            font-size: 1rem;
-            padding: 1rem 1.25rem;
-        }
-        
-        .sidebar {
-            background-color: white;
-            min-height: calc(100vh - 76px);
-            box-shadow: 1px 0 3px rgba(0,0,0,0.08);
-            border-right: 1px solid #E0E0E0;
-        }
-        
-        .sidebar .nav-link {
-            color: var(--mentiga-gray);
-            padding: 0.875rem 1.25rem;
-            border-radius: 4px;
-            margin: 0.125rem 0.75rem;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-        
-        .sidebar .nav-link:hover,
-        .sidebar .nav-link.active {
-            background-color: var(--mentiga-green);
-            color: white;
-        }
-        
-        .main-content {
-            padding: 20px;
         }
         
         .stats-card {
-            background: white;
-            color: var(--mentiga-gray);
-            border-radius: 6px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
             border: 1px solid #E0E0E0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
         }
         
         .stats-card h3 {
@@ -273,6 +239,8 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{% url 'KPI:employee_list' %}">All Employees</a></li>
                             <li><a class="dropdown-item" href="{% url 'KPI:employee_create' %}">Add Employee</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'KPI:admin_employee_profiles' %}">Employee Profiles</a></li>
                         </ul>
                     </li>
                     <li class="nav-item dropdown">
@@ -308,6 +276,7 @@
                         </a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="/admin/">Django Admin</a></li>
+                            <li><a class="dropdown-item" href="{% url 'KPI:admin_employee_profiles' %}">Employee Profiles</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="/admin/logout/">Logout</a></li>
                         </ul>
@@ -343,6 +312,11 @@
                         <a class="nav-link" href="{% url 'KPI:reports' %}">
                             <i class="fas fa-chart-bar me-2"></i> Reports
                         </a>
+                        <hr>
+                        <h6 class="text-muted mb-3 text-uppercase" style="font-size: 0.75rem; letter-spacing: 1px;">EMPLOYEE PORTAL</h6>
+                        <a class="nav-link" href="{% url 'KPI:employee_login' %}">
+                            <i class="fas fa-sign-in-alt me-2"></i> Employee Login
+                        </a>
                     </nav>
                 </div>
             </div>
@@ -363,46 +337,8 @@
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-light border-top mt-5">
-        <div class="container-fluid">
-            <div class="row py-3">
-                <div class="col-md-6">
-                    <small class="text-muted">
-                        © 2024 Mentiga Corporation Berhad. All rights reserved.
-                    </small>
-                </div>
-                <div class="col-md-6 text-end">
-                    <small class="text-muted">
-                        Performance Management System v2.0 | 
-                        <span id="current-time"></span>
-                    </small>
-                </div>
-            </div>
-        </div>
-    </footer>
-
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script>
-        // Display current time
-        function updateTime() {
-            const now = new Date();
-            const timeString = now.toLocaleString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-            document.getElementById('current-time').textContent = timeString;
-        }
-        
-        updateTime();
-        setInterval(updateTime, 1000);
-    </script>
     
     {% block extra_js %}{% endblock %}
 </body>

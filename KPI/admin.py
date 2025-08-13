@@ -4,7 +4,8 @@ from .models import (
     Department, Employee, KPICategory, KPI, EvaluationPeriod, 
     Evaluation, EvaluationDetail, Goal, Training, Competency,
     CompetencyAssessment, GoalProgress, Report, PerformanceImprovementPlan,
-    Notification
+    Notification, EmployeeProfile, EmployeeSelfEvaluation, EmployeeGoalSubmission,
+    EmployeeTrainingRequest, EmployeeLeaveRequest
 )
 
 @admin.register(Department)
@@ -223,3 +224,131 @@ class NotificationAdmin(admin.ModelAdmin):
     ordering = ['-created_at']
     readonly_fields = ['created_at']
     list_editable = ['is_read']
+
+# Employee Self-Service Admin
+@admin.register(EmployeeProfile)
+class EmployeeProfileAdmin(admin.ModelAdmin):
+    list_display = ['employee', 'is_profile_complete', 'profile_completion_percentage', 'last_profile_update']
+    list_filter = ['is_profile_complete', 'last_profile_update', 'employee__department']
+    search_fields = ['employee__first_name', 'employee__last_name', 'employee__employee_id']
+    readonly_fields = ['created_at', 'last_profile_update']
+    fieldsets = (
+        ('Employee Information', {
+            'fields': ('employee',)
+        }),
+        ('Personal Information', {
+            'fields': ('bio', 'skills', 'certifications', 'languages', 'interests')
+        }),
+        ('Professional Links', {
+            'fields': ('linkedin_profile', 'portfolio_url')
+        }),
+        ('Documents', {
+            'fields': ('profile_picture', 'resume')
+        }),
+        ('Emergency Contact', {
+            'fields': ('emergency_contact_name', 'emergency_contact_relationship', 'emergency_contact_phone', 'emergency_contact_email')
+        }),
+        ('Financial Information', {
+            'fields': ('bank_account_number', 'bank_name', 'tax_id', 'social_security_number')
+        }),
+        ('System Information', {
+            'fields': ('is_profile_complete', 'created_at', 'last_profile_update')
+        }),
+    )
+    
+    def profile_completion_percentage(self, obj):
+        return f"{obj.get_completion_percentage():.1f}%"
+    profile_completion_percentage.short_description = 'Profile Completion'
+
+@admin.register(EmployeeSelfEvaluation)
+class EmployeeSelfEvaluationAdmin(admin.ModelAdmin):
+    list_display = ['employee', 'period', 'status', 'submitted_at', 'reviewed_by']
+    list_filter = ['status', 'period', 'submitted_at', 'employee__department']
+    search_fields = ['employee__first_name', 'employee__last_name', 'employee__employee_id']
+    readonly_fields = ['created_at', 'updated_at']
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('employee', 'period', 'status')
+        }),
+        ('Self-Assessment', {
+            'fields': ('self_assessment', 'achievements', 'challenges', 'goals_met')
+        }),
+        ('Development', {
+            'fields': ('areas_for_improvement', 'career_aspirations', 'training_needs')
+        }),
+        ('Review Information', {
+            'fields': ('reviewed_by', 'review_comments', 'review_date')
+        }),
+        ('Timestamps', {
+            'fields': ('submitted_at', 'created_at', 'updated_at')
+        }),
+    )
+
+@admin.register(EmployeeGoalSubmission)
+class EmployeeGoalSubmissionAdmin(admin.ModelAdmin):
+    list_display = ['employee', 'title', 'goal_type', 'status', 'priority', 'target_date', 'progress']
+    list_filter = ['status', 'goal_type', 'priority', 'target_date', 'employee__department']
+    search_fields = ['employee__first_name', 'employee__last_name', 'title']
+    readonly_fields = ['created_at', 'updated_at']
+    fieldsets = (
+        ('Goal Information', {
+            'fields': ('employee', 'title', 'description', 'goal_type', 'priority')
+        }),
+        ('Timeline & Progress', {
+            'fields': ('target_date', 'progress', 'status')
+        }),
+        ('Details', {
+            'fields': ('success_criteria', 'resources_needed')
+        }),
+        ('Approval', {
+            'fields': ('approved_by', 'approval_date', 'approval_comments')
+        }),
+        ('Timestamps', {
+            'fields': ('submitted_at', 'created_at', 'updated_at')
+        }),
+    )
+
+@admin.register(EmployeeTrainingRequest)
+class EmployeeTrainingRequestAdmin(admin.ModelAdmin):
+    list_display = ['employee', 'title', 'training_type', 'status', 'start_date', 'end_date', 'estimated_cost']
+    list_filter = ['status', 'training_type', 'start_date', 'employee__department']
+    search_fields = ['employee__first_name', 'employee__last_name', 'title', 'provider']
+    readonly_fields = ['submitted_at']
+    fieldsets = (
+        ('Request Information', {
+            'fields': ('employee', 'title', 'description', 'training_type')
+        }),
+        ('Training Details', {
+            'fields': ('provider', 'location', 'start_date', 'end_date', 'duration_hours', 'estimated_cost')
+        }),
+        ('Justification', {
+            'fields': ('business_justification', 'expected_outcomes')
+        }),
+        ('Review', {
+            'fields': ('status', 'reviewed_by', 'review_date', 'review_comments', 'approved_date', 'rejection_reason')
+        }),
+        ('Timestamps', {
+            'fields': ('submitted_at',)
+        }),
+    )
+
+@admin.register(EmployeeLeaveRequest)
+class EmployeeLeaveRequestAdmin(admin.ModelAdmin):
+    list_display = ['employee', 'leave_type', 'start_date', 'end_date', 'total_days', 'status']
+    list_filter = ['status', 'leave_type', 'start_date', 'employee__department']
+    search_fields = ['employee__first_name', 'employee__last_name', 'reason']
+    readonly_fields = ['submitted_at']
+    fieldsets = (
+        ('Leave Information', {
+            'fields': ('employee', 'leave_type', 'start_date', 'end_date', 'total_days')
+        }),
+        ('Details', {
+            'fields': ('reason', 'contact_during_leave', 'contact_phone')
+        }),
+        ('Review', {
+            'fields': ('status', 'reviewed_by', 'review_date', 'review_comments', 'approved_date', 'rejection_reason')
+        }),
+        ('Timestamps', {
+            'fields': ('submitted_at',)
+        }),
+    )

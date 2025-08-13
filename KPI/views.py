@@ -942,3 +942,503 @@ def notifications(request):
     }
     
     return render(request, 'KPI/notifications.html', context)
+
+# Employee Self-Service Views
+def employee_login(request):
+    """Employee login page"""
+    if request.method == 'POST':
+        form = EmployeeLoginForm(request.POST)
+        if form.is_valid():
+            employee_id = form.cleaned_data['employee_id']
+            password = form.cleaned_data['password']
+            
+            try:
+                # Find employee by employee_id
+                employee = Employee.objects.get(employee_id=employee_id)
+                
+                # Check if employee has a user account
+                if employee.user and employee.user.check_password(password):
+                    # Log in the user
+                    from django.contrib.auth import login
+                    login(request, employee.user)
+                    
+                    # Redirect to employee dashboard
+                    messages.success(request, f'Welcome back, {employee.first_name}!')
+                    return redirect('KPI:employee_dashboard')
+                else:
+                    messages.error(request, 'Invalid employee ID or password.')
+            except Employee.DoesNotExist:
+                messages.error(request, 'Employee not found.')
+    else:
+        form = EmployeeLoginForm()
+    
+    context = {
+        'form': form,
+        'title': 'Employee Login'
+    }
+    return render(request, 'KPI/employee_login.html', context)
+
+@login_required
+def employee_dashboard(request):
+    """Employee dashboard for self-service"""
+    try:
+        employee = request.user.employee
+    except:
+        messages.error(request, 'Employee profile not found.')
+        return redirect('KPI:employee_login')
+    
+    # Get employee profile
+    profile, created = EmployeeProfile.objects.get_or_create(employee=employee)
+    
+    # Get recent activities
+    recent_self_evaluations = EmployeeSelfEvaluation.objects.filter(employee=employee).order_by('-created_at')[:3]
+    recent_goal_submissions = EmployeeGoalSubmission.objects.filter(employee=employee).order_by('-created_at')[:3]
+    recent_training_requests = EmployeeTrainingRequest.objects.filter(employee=employee).order_by('-submitted_at')[:3]
+    recent_leave_requests = EmployeeLeaveRequest.objects.filter(employee=employee).order_by('-submitted_at')[:3]
+    
+    # Get pending items
+    pending_self_evaluations = EmployeeSelfEvaluation.objects.filter(employee=employee, status='draft').count()
+    pending_goal_submissions = EmployeeGoalSubmission.objects.filter(employee=employee, status='draft').count()
+    pending_training_requests = EmployeeTrainingRequest.objects.filter(employee=employee, status='pending').count()
+    pending_leave_requests = EmployeeLeaveRequest.objects.filter(employee=employee, status='pending').count()
+    
+    # Get profile completion percentage
+    profile_completion = profile.get_completion_percentage()
+    
+    context = {
+        'employee': employee,
+        'profile': profile,
+        'profile_completion': profile_completion,
+        'recent_self_evaluations': recent_self_evaluations,
+        'recent_goal_submissions': recent_goal_submissions,
+        'recent_training_requests': recent_training_requests,
+        'recent_leave_requests': recent_leave_requests,
+        'pending_self_evaluations': pending_self_evaluations,
+        'pending_goal_submissions': pending_goal_submissions,
+        'pending_training_requests': pending_training_requests,
+        'pending_leave_requests': pending_leave_requests,
+    }
+    
+    return render(request, 'KPI/employee_dashboard.html', context)
+
+@login_required
+def employee_profile(request):
+    """Employee profile management"""
+    try:
+        employee = request.user.employee
+    except:
+        messages.error(request, 'Employee profile not found.')
+        return redirect('KPI:employee_login')
+    
+    profile, created = EmployeeProfile.objects.get_or_create(employee=employee)
+    
+    if request.method == 'POST':
+        form = EmployeeProfileForm(request.POST, request.FILES, instance=profile)
+        if form.is_valid():
+            profile = form.save()
+            
+            # Update profile completion status
+            completion_percentage = profile.get_completion_percentage()
+            if completion_percentage >= 80:
+                profile.is_profile_complete = True
+            profile.save()
+            
+            messages.success(request, 'Profile updated successfully!')
+            return redirect('KPI:employee_profile')
+    else:
+        form = EmployeeProfileForm(instance=profile)
+    
+    profile_completion = profile.get_completion_percentage()
+    
+    context = {
+        'employee': employee,
+        'profile': profile,
+        'form': form,
+        'profile_completion': profile_completion,
+    }
+    
+    return render(request, 'KPI/employee_profile.html', context)
+
+@login_required
+def employee_self_evaluations(request):
+    """Employee self-evaluations list"""
+    try:
+        employee = request.user.employee
+    except:
+        messages.error(request, 'Employee profile not found.')
+        return redirect('KPI:employee_login')
+    
+    self_evaluations = EmployeeSelfEvaluation.objects.filter(employee=employee).order_by('-created_at')
+    
+    context = {
+        'employee': employee,
+        'self_evaluations': self_evaluations,
+    }
+    
+    return render(request, 'KPI/employee_self_evaluations.html', context)
+
+@login_required
+def employee_self_evaluation_create(request):
+    """Create new self-evaluation"""
+    try:
+        employee = request.user.employee
+    except:
+        messages.error(request, 'Employee profile not found.')
+        return redirect('KPI:employee_login')
+    
+    if request.method == 'POST':
+        form = EmployeeSelfEvaluationForm(request.POST)
+        if form.is_valid():
+            self_evaluation = form.save(commit=False)
+            self_evaluation.employee = employee
+            
+            # Set status based on action
+            if 'save_draft' in request.POST:
+                self_evaluation.status = 'draft'
+            elif 'submit' in request.POST:
+                self_evaluation.status = 'submitted'
+                self_evaluation.submitted_at = timezone.now()
+            
+            self_evaluation.save()
+            
+            if self_evaluation.status == 'submitted':
+                messages.success(request, 'Self-evaluation submitted successfully!')
+            else:
+                messages.success(request, 'Self-evaluation saved as draft.')
+            
+            return redirect('KPI:employee_self_evaluations')
+    else:
+        form = EmployeeSelfEvaluationForm()
+    
+    context = {
+        'employee': employee,
+        'form': form,
+        'title': 'Create Self-Evaluation',
+        'action': 'Create'
+    }
+    
+    return render(request, 'KPI/employee_self_evaluation_form.html', context)
+
+@login_required
+def employee_self_evaluation_edit(request, evaluation_id):
+    """Edit self-evaluation"""
+    try:
+        employee = request.user.employee
+    except:
+        messages.error(request, 'Employee profile not found.')
+        return redirect('KPI:employee_login')
+    
+    self_evaluation = get_object_or_404(EmployeeSelfEvaluation, id=evaluation_id, employee=employee)
+    
+    if request.method == 'POST':
+        form = EmployeeSelfEvaluationForm(request.POST, instance=self_evaluation)
+        if form.is_valid():
+            # Set status based on action
+            if 'save_draft' in request.POST:
+                self_evaluation.status = 'draft'
+            elif 'submit' in request.POST:
+                self_evaluation.status = 'submitted'
+                self_evaluation.submitted_at = timezone.now()
+            
+            form.save()
+            
+            if self_evaluation.status == 'submitted':
+                messages.success(request, 'Self-evaluation updated and submitted successfully!')
+            else:
+                messages.success(request, 'Self-evaluation updated and saved as draft.')
+            
+            return redirect('KPI:employee_self_evaluations')
+    else:
+        form = EmployeeSelfEvaluationForm(instance=self_evaluation)
+    
+    context = {
+        'employee': employee,
+        'self_evaluation': self_evaluation,
+        'form': form,
+        'title': f'Edit Self-Evaluation - {self_evaluation.period.name}',
+        'action': 'Update'
+    }
+    
+    return render(request, 'KPI/employee_self_evaluation_form.html', context)
+
+@login_required
+def employee_goal_submissions(request):
+    """Employee goal submissions list"""
+    try:
+        employee = request.user.employee
+    except:
+        messages.error(request, 'Employee profile not found.')
+        return redirect('KPI:employee_login')
+    
+    goal_submissions = EmployeeGoalSubmission.objects.filter(employee=employee).order_by('-created_at')
+    
+    context = {
+        'employee': employee,
+        'goal_submissions': goal_submissions,
+    }
+    
+    return render(request, 'KPI/employee_goal_submissions.html', context)
+
+@login_required
+def employee_goal_submission_create(request):
+    """Create new goal submission"""
+    try:
+        employee = request.user.employee
+    except:
+        messages.error(request, 'Employee profile not found.')
+        return redirect('KPI:employee_login')
+    
+    if request.method == 'POST':
+        form = EmployeeGoalSubmissionForm(request.POST)
+        if form.is_valid():
+            goal_submission = form.save(commit=False)
+            goal_submission.employee = employee
+            
+            # Set status based on action
+            if 'save_draft' in request.POST:
+                goal_submission.status = 'draft'
+            elif 'submit' in request.POST:
+                goal_submission.status = 'submitted'
+                goal_submission.submitted_at = timezone.now()
+            
+            goal_submission.save()
+            
+            if goal_submission.status == 'submitted':
+                messages.success(request, 'Goal submission submitted successfully!')
+            else:
+                messages.success(request, 'Goal submission saved as draft.')
+            
+            return redirect('KPI:employee_goal_submissions')
+    else:
+        form = EmployeeGoalSubmissionForm()
+    
+    context = {
+        'employee': employee,
+        'form': form,
+        'title': 'Create Goal Submission',
+        'action': 'Create'
+    }
+    
+    return render(request, 'KPI/employee_goal_submission_form.html', context)
+
+@login_required
+def employee_training_requests(request):
+    """Employee training requests list"""
+    try:
+        employee = request.user.employee
+    except:
+        messages.error(request, 'Employee profile not found.')
+        return redirect('KPI:employee_login')
+    
+    training_requests = EmployeeTrainingRequest.objects.filter(employee=employee).order_by('-submitted_at')
+    
+    context = {
+        'employee': employee,
+        'training_requests': training_requests,
+    }
+    
+    return render(request, 'KPI/employee_training_requests.html', context)
+
+@login_required
+def employee_training_request_create(request):
+    """Create new training request"""
+    try:
+        employee = request.user.employee
+    except:
+        messages.error(request, 'Employee profile not found.')
+        return redirect('KPI:employee_login')
+    
+    if request.method == 'POST':
+        form = EmployeeTrainingRequestForm(request.POST)
+        if form.is_valid():
+            training_request = form.save(commit=False)
+            training_request.employee = employee
+            training_request.save()
+            
+            messages.success(request, 'Training request submitted successfully!')
+            return redirect('KPI:employee_training_requests')
+    else:
+        form = EmployeeTrainingRequestForm()
+    
+    context = {
+        'employee': employee,
+        'form': form,
+        'title': 'Create Training Request',
+        'action': 'Create'
+    }
+    
+    return render(request, 'KPI/employee_training_request_form.html', context)
+
+@login_required
+def employee_leave_requests(request):
+    """Employee leave requests list"""
+    try:
+        employee = request.user.employee
+    except:
+        messages.error(request, 'Employee profile not found.')
+        return redirect('KPI:employee_login')
+    
+    leave_requests = EmployeeLeaveRequest.objects.filter(employee=employee).order_by('-submitted_at')
+    
+    context = {
+        'employee': employee,
+        'leave_requests': leave_requests,
+    }
+    
+    return render(request, 'KPI/employee_leave_requests.html', context)
+
+@login_required
+def employee_leave_request_create(request):
+    """Create new leave request"""
+    try:
+        employee = request.user.employee
+    except:
+        messages.error(request, 'Employee profile not found.')
+        return redirect('KPI:employee_login')
+    
+    if request.method == 'POST':
+        form = EmployeeLeaveRequestForm(request.POST)
+        if form.is_valid():
+            leave_request = form.save(commit=False)
+            leave_request.employee = employee
+            leave_request.save()
+            
+            messages.success(request, 'Leave request submitted successfully!')
+            return redirect('KPI:employee_leave_requests')
+    else:
+        form = EmployeeLeaveRequestForm()
+    
+    context = {
+        'employee': employee,
+        'form': form,
+        'title': 'Create Leave Request',
+        'action': 'Create'
+    }
+    
+    return render(request, 'KPI/employee_leave_request_form.html', context)
+
+@login_required
+def employee_change_password(request):
+    """Employee password change"""
+    try:
+        employee = request.user.employee
+    except:
+        messages.error(request, 'Employee profile not found.')
+        return redirect('KPI:employee_login')
+    
+    if request.method == 'POST':
+        form = EmployeePasswordChangeForm(request.POST)
+        if form.is_valid():
+            current_password = form.cleaned_data['current_password']
+            new_password = form.cleaned_data['new_password']
+            
+            # Check current password
+            if request.user.check_password(current_password):
+                # Change password
+                request.user.set_password(new_password)
+                request.user.save()
+                
+                # Re-login user
+                from django.contrib.auth import login
+                login(request, request.user)
+                
+                messages.success(request, 'Password changed successfully!')
+                return redirect('KPI:employee_dashboard')
+            else:
+                messages.error(request, 'Current password is incorrect.')
+    else:
+        form = EmployeePasswordChangeForm()
+    
+    context = {
+        'employee': employee,
+        'form': form,
+    }
+    
+    return render(request, 'KPI/employee_change_password.html', context)
+
+# Admin Management Views for Employee Data
+@login_required
+def admin_employee_profiles(request):
+    """Admin view of all employee profiles"""
+    profiles = EmployeeProfile.objects.select_related('employee', 'employee__department').all()
+    
+    # Search functionality
+    search_query = request.GET.get('search', '')
+    if search_query:
+        profiles = profiles.filter(
+            Q(employee__first_name__icontains=search_query) |
+            Q(employee__last_name__icontains=search_query) |
+            Q(employee__employee_id__icontains=search_query)
+        )
+    
+    # Filter by department
+    department_filter = request.GET.get('department', '')
+    if department_filter:
+        profiles = profiles.filter(employee__department_id=department_filter)
+    
+    # Filter by profile completion
+    completion_filter = request.GET.get('completion', '')
+    if completion_filter == 'complete':
+        profiles = profiles.filter(is_profile_complete=True)
+    elif completion_filter == 'incomplete':
+        profiles = profiles.filter(is_profile_complete=False)
+    
+    # Pagination
+    paginator = Paginator(profiles, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    departments = Department.objects.all()
+    
+    context = {
+        'profiles': page_obj,
+        'departments': departments,
+        'search_query': search_query,
+        'department_filter': department_filter,
+        'completion_filter': completion_filter,
+    }
+    
+    return render(request, 'KPI/admin_employee_profiles.html', context)
+
+@login_required
+def admin_employee_profile_detail(request, profile_id):
+    """Admin view of employee profile detail"""
+    profile = get_object_or_404(EmployeeProfile, id=profile_id)
+    
+    context = {
+        'profile': profile,
+        'employee': profile.employee,
+    }
+    
+    return render(request, 'KPI/admin_employee_profile_detail.html', context)
+
+@login_required
+def admin_employee_profile_edit(request, profile_id):
+    """Admin edit employee profile"""
+    profile = get_object_or_404(EmployeeProfile, id=profile_id)
+    
+    if request.method == 'POST':
+        form = EmployeeProfileForm(request.POST, request.FILES, instance=profile)
+        if form.is_valid():
+            profile = form.save()
+            
+            # Update profile completion status
+            completion_percentage = profile.get_completion_percentage()
+            if completion_percentage >= 80:
+                profile.is_profile_complete = True
+            profile.save()
+            
+            messages.success(request, f'Profile for {profile.employee.full_name} updated successfully.')
+            return redirect('KPI:admin_employee_profile_detail', profile_id=profile.id)
+    else:
+        form = EmployeeProfileForm(instance=profile)
+    
+    context = {
+        'profile': profile,
+        'employee': profile.employee,
+        'form': form,
+        'title': f'Edit Profile - {profile.employee.full_name}',
+        'action': 'Update'
+    }
+    
+    return render(request, 'KPI/admin_employee_profile_form.html', context)

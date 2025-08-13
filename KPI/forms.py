@@ -3,7 +3,8 @@ from django.forms import inlineformset_factory
 from .models import (
     Employee, Department, Evaluation, EvaluationDetail, Goal, Training,
     KPICategory, KPI, EvaluationPeriod, Competency, CompetencyAssessment,
-    GoalProgress, PerformanceImprovementPlan
+    GoalProgress, PerformanceImprovementPlan, EmployeeProfile, EmployeeSelfEvaluation,
+    EmployeeGoalSubmission, EmployeeTrainingRequest, EmployeeLeaveRequest
 )
 
 class EmployeeForm(forms.ModelForm):
@@ -221,3 +222,161 @@ class ReportFilterForm(forms.Form):
     training_type = forms.ChoiceField(choices=[('', 'All Types')] + Training.TRAINING_TYPES, required=False)
     goal_type = forms.ChoiceField(choices=[('', 'All Types')] + Goal.GOAL_TYPES, required=False)
     priority = forms.ChoiceField(choices=[('', 'All Priorities'), ('low', 'Low'), ('medium', 'Medium'), ('high', 'High')], required=False)
+
+class EmployeeProfileForm(forms.ModelForm):
+    """Form for employees to update their profile"""
+    class Meta:
+        model = EmployeeProfile
+        fields = [
+            'bio', 'skills', 'certifications', 'languages', 'interests',
+            'linkedin_profile', 'portfolio_url', 'profile_picture', 'resume',
+            'emergency_contact_name', 'emergency_contact_relationship',
+            'emergency_contact_phone', 'emergency_contact_email',
+            'bank_account_number', 'bank_name', 'tax_id', 'social_security_number'
+        ]
+        widgets = {
+            'bio': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Tell us about yourself...'}),
+            'skills': forms.Textarea(attrs={'rows': 3, 'placeholder': 'List your key skills and competencies...'}),
+            'certifications': forms.Textarea(attrs={'rows': 3, 'placeholder': 'List your professional certifications...'}),
+            'languages': forms.TextInput(attrs={'placeholder': 'e.g., English, Malay, Mandarin'}),
+            'interests': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Share your professional interests...'}),
+            'linkedin_profile': forms.URLInput(attrs={'placeholder': 'https://linkedin.com/in/yourprofile'}),
+            'portfolio_url': forms.URLInput(attrs={'placeholder': 'https://yourportfolio.com'}),
+            'emergency_contact_name': forms.TextInput(attrs={'placeholder': 'Emergency contact person name'}),
+            'emergency_contact_relationship': forms.TextInput(attrs={'placeholder': 'e.g., Spouse, Parent, Friend'}),
+            'emergency_contact_phone': forms.TextInput(attrs={'placeholder': 'Emergency contact phone number'}),
+            'emergency_contact_email': forms.EmailInput(attrs={'placeholder': 'Emergency contact email'}),
+            'bank_account_number': forms.TextInput(attrs={'placeholder': 'Bank account number'}),
+            'bank_name': forms.TextInput(attrs={'placeholder': 'Bank name'}),
+            'tax_id': forms.TextInput(attrs={'placeholder': 'Tax identification number'}),
+            'social_security_number': forms.TextInput(attrs={'placeholder': 'Social security number'}),
+        }
+
+class EmployeeSelfEvaluationForm(forms.ModelForm):
+    """Form for employee self-evaluations"""
+    class Meta:
+        model = EmployeeSelfEvaluation
+        fields = [
+            'period', 'self_assessment', 'achievements', 'challenges',
+            'goals_met', 'areas_for_improvement', 'career_aspirations', 'training_needs'
+        ]
+        widgets = {
+            'period': forms.Select(attrs={'class': 'form-select'}),
+            'self_assessment': forms.Textarea(attrs={'rows': 5, 'placeholder': 'Provide a comprehensive self-assessment of your performance...'}),
+            'achievements': forms.Textarea(attrs={'rows': 4, 'placeholder': 'List your key achievements during this period...'}),
+            'challenges': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Describe challenges faced and how you overcame them...'}),
+            'goals_met': forms.Textarea(attrs={'rows': 4, 'placeholder': 'List goals that were met during this period...'}),
+            'areas_for_improvement': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Identify areas where you need improvement...'}),
+            'career_aspirations': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Share your career goals and aspirations...'}),
+            'training_needs': forms.Textarea(attrs={'rows': 3, 'placeholder': 'What training and development do you need?'}),
+        }
+
+class EmployeeGoalSubmissionForm(forms.ModelForm):
+    """Form for employee goal submissions"""
+    class Meta:
+        model = EmployeeGoalSubmission
+        fields = [
+            'title', 'description', 'goal_type', 'target_date', 'success_criteria',
+            'resources_needed', 'priority'
+        ]
+        widgets = {
+            'title': forms.TextInput(attrs={'placeholder': 'Enter your goal title...'}),
+            'description': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Describe your goal in detail...'}),
+            'goal_type': forms.Select(attrs={'class': 'form-select'}),
+            'target_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'success_criteria': forms.Textarea(attrs={'rows': 3, 'placeholder': 'How will you measure success?'}),
+            'resources_needed': forms.Textarea(attrs={'rows': 3, 'placeholder': 'What resources and support do you need?'}),
+            'priority': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+class EmployeeTrainingRequestForm(forms.ModelForm):
+    """Form for employee training requests"""
+    class Meta:
+        model = EmployeeTrainingRequest
+        fields = [
+            'title', 'description', 'training_type', 'provider', 'location',
+            'start_date', 'end_date', 'duration_hours', 'estimated_cost',
+            'business_justification', 'expected_outcomes'
+        ]
+        widgets = {
+            'title': forms.TextInput(attrs={'placeholder': 'Training program title...'}),
+            'description': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Why do you need this training?'}),
+            'training_type': forms.Select(attrs={'class': 'form-select'}),
+            'provider': forms.TextInput(attrs={'placeholder': 'Training provider or institution'}),
+            'location': forms.TextInput(attrs={'placeholder': 'Training location or online platform'}),
+            'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'duration_hours': forms.NumberInput(attrs={'min': '0', 'step': '0.5', 'placeholder': 'Duration in hours'}),
+            'estimated_cost': forms.NumberInput(attrs={'min': '0', 'step': '0.01', 'placeholder': 'Estimated cost'}),
+            'business_justification': forms.Textarea(attrs={'rows': 4, 'placeholder': 'How will this training benefit the business?'}),
+            'expected_outcomes': forms.Textarea(attrs={'rows': 3, 'placeholder': 'What outcomes do you expect from this training?'}),
+        }
+
+class EmployeeLeaveRequestForm(forms.ModelForm):
+    """Form for employee leave requests"""
+    class Meta:
+        model = EmployeeLeaveRequest
+        fields = [
+            'leave_type', 'start_date', 'end_date', 'total_days', 'reason',
+            'contact_during_leave', 'contact_phone'
+        ]
+        widgets = {
+            'leave_type': forms.Select(attrs={'class': 'form-select'}),
+            'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'total_days': forms.NumberInput(attrs={'min': '0.5', 'step': '0.5', 'placeholder': 'Total days requested'}),
+            'reason': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Reason for leave request...'}),
+            'contact_during_leave': forms.TextInput(attrs={'placeholder': 'Emergency contact person during leave'}),
+            'contact_phone': forms.TextInput(attrs={'placeholder': 'Emergency contact phone number'}),
+        }
+
+class EmployeeLoginForm(forms.Form):
+    """Form for employee login"""
+    employee_id = forms.CharField(
+        max_length=20,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter your Employee ID',
+            'autocomplete': 'off'
+        })
+    )
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter your password'
+        })
+    )
+
+class EmployeePasswordChangeForm(forms.Form):
+    """Form for employee password change"""
+    current_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Current password'
+        })
+    )
+    new_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'New password'
+        })
+    )
+    confirm_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Confirm new password'
+        })
+    )
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        new_password = cleaned_data.get('new_password')
+        confirm_password = cleaned_data.get('confirm_password')
+        
+        if new_password and confirm_password:
+            if new_password != confirm_password:
+                raise forms.ValidationError("New passwords don't match.")
+            if len(new_password) < 8:
+                raise forms.ValidationError("Password must be at least 8 characters long.")
+        
+        return cleaned_data

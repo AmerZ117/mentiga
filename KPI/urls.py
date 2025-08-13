@@ -50,4 +50,24 @@ urlpatterns = [
     # API endpoints
     path('api/employee/<int:employee_id>/', views.get_employee_data, name='get_employee_data'),
     path('api/kpi-data/', views.get_kpi_data, name='get_kpi_data'),
+    
+    # Employee Self-Service URLs
+    path('employee/login/', views.employee_login, name='employee_login'),
+    path('employee/dashboard/', views.employee_dashboard, name='employee_dashboard'),
+    path('employee/profile/', views.employee_profile, name='employee_profile'),
+    path('employee/self-evaluations/', views.employee_self_evaluations, name='employee_self_evaluations'),
+    path('employee/self-evaluations/create/', views.employee_self_evaluation_create, name='employee_self_evaluation_create'),
+    path('employee/self-evaluations/<int:evaluation_id>/edit/', views.employee_self_evaluation_edit, name='employee_self_evaluation_edit'),
+    path('employee/goal-submissions/', views.employee_goal_submissions, name='employee_goal_submissions'),
+    path('employee/goal-submissions/create/', views.employee_goal_submission_create, name='employee_goal_submission_create'),
+    path('employee/training-requests/', views.employee_training_requests, name='employee_training_requests'),
+    path('employee/training-requests/create/', views.employee_training_request_create, name='employee_training_request_create'),
+    path('employee/leave-requests/', views.employee_leave_requests, name='employee_leave_requests'),
+    path('employee/leave-requests/create/', views.employee_leave_request_create, name='employee_leave_request_create'),
+    path('employee/change-password/', views.employee_change_password, name='employee_change_password'),
+    
+    # Admin Management URLs for Employee Data
+    path('admin/employee-profiles/', views.admin_employee_profiles, name='admin_employee_profiles'),
+    path('admin/employee-profiles/<int:profile_id>/', views.admin_employee_profile_detail, name='admin_employee_profile_detail'),
+    path('admin/employee-profiles/<int:profile_id>/edit/', views.admin_employee_profile_edit, name='admin_employee_profile_edit'),
 ]

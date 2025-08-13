@@ -21,7 +21,8 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('KPI.urls')),
+    path('employee/', include('KPI.urls')),  # Employee self-service routes
+    path('', include('KPI.urls')),  # Main KPI routes
 ]
 
 if settings.DEBUG:

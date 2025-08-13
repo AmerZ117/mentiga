@@ -1,0 +1,465 @@
+{% extends 'KPI/base.html' %}
+
+{% block title %}Employee Dashboard - {{ employee.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .employee-welcome {
+        background: linear-gradient(135deg, var(--mentiga-green) 0%, var(--mentiga-dark-green) 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 25px rgba(46, 125, 50, 0.2);
+    }
+    
+    .profile-completion-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        border: 1px solid #E0E0E0;
+        text-align: center;
+    }
+    
+    .profile-completion-circle {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: conic-gradient(var(--mentiga-green) 0deg, var(--mentiga-green) {{ profile_completion|floatformat:0 }}deg, #E0E0E0 {{ profile_completion|floatformat:0 }}deg, #E0E0E0 360deg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        position: relative;
+    }
+    
+    .profile-completion-circle::before {
+        content: '';
+        width: 80px;
+        height: 80px;
+        background: white;
+        border-radius: 50%;
+        position: absolute;
+    }
+    
+    .profile-completion-text {
+        position: relative;
+        z-index: 1;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--mentiga-green);
+    }
+    
+    .quick-action-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        border: 1px solid #E0E0E0;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    
+    .quick-action-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .quick-action-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+        margin-bottom: 1rem;
+    }
+    
+    .icon-profile { background: linear-gradient(135deg, #2196F3, #1976D2); }
+    .icon-evaluation { background: linear-gradient(135deg, #4CAF50, #388E3C); }
+    .icon-goals { background: linear-gradient(135deg, #FF9800, #F57C00); }
+    .icon-training { background: linear-gradient(135deg, #9C27B0, #7B1FA2); }
+    .icon-leave { background: linear-gradient(135deg, #F44336, #D32F2F); }
+    .icon-password { background: linear-gradient(135deg, #607D8B, #455A64); }
+    
+    .recent-activity-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        border: 1px solid #E0E0E0;
+        height: 100%;
+    }
+    
+    .activity-item {
+        padding: 1rem 0;
+        border-bottom: 1px solid #F0F0F0;
+        display: flex;
+        align-items: center;
+    }
+    
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+    
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        margin-right: 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .activity-content {
+        flex: 1;
+    }
+    
+    .activity-title {
+        font-weight: 600;
+        color: var(--mentiga-gray);
+        margin-bottom: 0.25rem;
+    }
+    
+    .activity-meta {
+        font-size: 0.85rem;
+        color: var(--mentiga-light-gray);
+    }
+    
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .status-draft { background: #FFF3E0; color: #E65100; }
+    .status-submitted { background: #E3F2FD; color: #1565C0; }
+    .status-approved { background: #E8F5E8; color: var(--mentiga-dark-green); }
+    .status-rejected { background: #FFEBEE; color: #C62828; }
+    .status-pending { background: #FFF8E1; color: #F57F17; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Employee Welcome Section -->
+    <div class="employee-welcome">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-2">
+                    <i class="fas fa-user-circle me-3"></i>
+                    Welcome back, {{ employee.first_name }}!
+                </h1>
+                <p class="mb-0 fs-5">
+                    Employee ID: {{ employee.employee_id }} | 
+                    Department: {{ employee.department.name }} | 
+                    Position: {{ employee.position }}
+                </p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <a href="{% url 'KPI:employee_profile' %}" class="btn btn-outline-light">
+                    <i class="fas fa-edit me-2"></i>Edit Profile
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Profile Completion Card -->
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="profile-completion-card">
+                <div class="profile-completion-circle">
+                    <div class="profile-completion-text">{{ profile_completion|floatformat:0 }}%</div>
+                </div>
+                <h5 class="mb-2">Profile Completion</h5>
+                <p class="text-muted mb-3">Complete your profile to unlock all features</p>
+                <a href="{% url 'KPI:employee_profile' %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-edit me-2"></i>Complete Profile
+                </a>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="col-lg-9">
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="quick-action-card">
+                        <div class="quick-action-icon icon-profile">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h6>Profile Management</h6>
+                        <p class="text-muted small">Update your personal and professional information</p>
+                        <a href="{% url 'KPI:employee_profile' %}" class="btn btn-outline-primary btn-sm">
+                            Manage Profile
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-4">
+                    <div class="quick-action-card">
+                        <div class="quick-action-icon icon-evaluation">
+                            <i class="fas fa-clipboard-check"></i>
+                        </div>
+                        <h6>Self-Evaluations</h6>
+                        <p class="text-muted small">Submit and manage your performance evaluations</p>
+                        <a href="{% url 'KPI:employee_self_evaluations' %}" class="btn btn-outline-primary btn-sm">
+                            View Evaluations
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-4">
+                    <div class="quick-action-card">
+                        <div class="quick-action-icon icon-goals">
+                            <i class="fas fa-bullseye"></i>
+                        </div>
+                        <h6>Goal Submissions</h6>
+                        <p class="text-muted small">Set and track your professional goals</p>
+                        <a href="{% url 'KPI:employee_goal_submissions' %}" class="btn btn-outline-primary btn-sm">
+                            Manage Goals
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-4">
+                    <div class="quick-action-card">
+                        <div class="quick-action-icon icon-training">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <h6>Training Requests</h6>
+                        <p class="text-muted small">Request training and development opportunities</p>
+                        <a href="{% url 'KPI:employee_training_requests' %}" class="btn btn-outline-primary btn-sm">
+                            Request Training
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-4">
+                    <div class="quick-action-card">
+                        <div class="quick-action-icon icon-leave">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <h6>Leave Requests</h6>
+                        <p class="text-muted small">Submit and track your leave requests</p>
+                        <a href="{% url 'KPI:employee_leave_requests' %}" class="btn btn-outline-primary btn-sm">
+                            Request Leave
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-4">
+                    <div class="quick-action-card">
+                        <div class="quick-action-icon icon-password">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <h6>Change Password</h6>
+                        <p class="text-muted small">Update your account password</p>
+                        <a href="{% url 'KPI:employee_change_password' %}" class="btn btn-outline-primary btn-sm">
+                            Change Password
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Recent Self-Evaluations -->
+        <div class="col-lg-6 mb-4">
+            <div class="recent-activity-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clipboard-check me-2 text-success"></i>
+                        Recent Self-Evaluations
+                    </h5>
+                    <a href="{% url 'KPI:employee_self_evaluations' %}" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
+                </div>
+                
+                {% if recent_self_evaluations %}
+                    {% for evaluation in recent_self_evaluations %}
+                    <div class="activity-item">
+                        <div class="activity-icon icon-evaluation">
+                            <i class="fas fa-clipboard-check"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title">{{ evaluation.period.name }}</div>
+                            <div class="activity-meta">
+                                {{ evaluation.created_at|date:"M d, Y" }} • 
+                                <span class="status-badge status-{{ evaluation.status }}">
+                                    {{ evaluation.get_status_display }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center py-3">No self-evaluations yet</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Recent Goal Submissions -->
+        <div class="col-lg-6 mb-4">
+            <div class="recent-activity-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bullseye me-2 text-warning"></i>
+                        Recent Goal Submissions
+                    </h5>
+                    <a href="{% url 'KPI:employee_goal_submissions' %}" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
+                </div>
+                
+                {% if recent_goal_submissions %}
+                    {% for goal in recent_goal_submissions %}
+                    <div class="activity-item">
+                        <div class="activity-icon icon-goals">
+                            <i class="fas fa-bullseye"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title">{{ goal.title }}</div>
+                            <div class="activity-meta">
+                                {{ goal.created_at|date:"M d, Y" }} • 
+                                <span class="status-badge status-{{ goal.status }}">
+                                    {{ goal.get_status_display }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center py-3">No goal submissions yet</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Recent Training Requests -->
+        <div class="col-lg-6 mb-4">
+            <div class="recent-activity-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-graduation-cap me-2 text-purple"></i>
+                        Recent Training Requests
+                    </h5>
+                    <a href="{% url 'KPI:employee_training_requests' %}" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
+                </div>
+                
+                {% if recent_training_requests %}
+                    {% for training in recent_training_requests %}
+                    <div class="activity-item">
+                        <div class="activity-icon icon-training">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title">{{ training.title }}</div>
+                            <div class="activity-meta">
+                                {{ training.submitted_at|date:"M d, Y" }} • 
+                                <span class="status-badge status-{{ training.status }}">
+                                    {{ training.get_status_display }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center py-3">No training requests yet</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Recent Leave Requests -->
+        <div class="col-lg-6 mb-4">
+            <div class="recent-activity-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-alt me-2 text-danger"></i>
+                        Recent Leave Requests
+                    </h5>
+                    <a href="{% url 'KPI:employee_leave_requests' %}" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
+                </div>
+                
+                {% if recent_leave_requests %}
+                    {% for leave in recent_leave_requests %}
+                    <div class="activity-item">
+                        <div class="activity-icon icon-leave">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title">{{ leave.get_leave_type_display }}</div>
+                            <div class="activity-meta">
+                                {{ leave.submitted_at|date:"M d, Y" }} • 
+                                <span class="status-badge status-{{ leave.status }}">
+                                    {{ leave.get_status_display }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center py-3">No leave requests yet</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Pending Items Summary -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock me-2 text-warning"></i>
+                        Pending Items
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="p-3">
+                                <h3 class="text-warning">{{ pending_self_evaluations }}</h3>
+                                <p class="text-muted mb-0">Draft Self-Evaluations</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3">
+                                <h3 class="text-warning">{{ pending_goal_submissions }}</h3>
+                                <p class="text-muted mb-0">Draft Goal Submissions</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3">
+                                <h3 class="text-info">{{ pending_training_requests }}</h3>
+                                <p class="text-muted mb-0">Pending Training Requests</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3">
+                                <h3 class="text-info">{{ pending_leave_requests }}</h3>
+                                <p class="text-muted mb-0">Pending Leave Requests</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

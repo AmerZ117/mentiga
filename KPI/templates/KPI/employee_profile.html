@@ -1,0 +1,237 @@
+{% extends 'KPI/base.html' %}
+
+{% block title %}Employee Profile - {{ employee.full_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="page-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1><i class="fas fa-user me-3"></i>Employee Profile</h1>
+                <p class="text-muted mb-0">Manage your personal and professional information</p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <a href="{% url 'KPI:employee_dashboard' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>Profile Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.bio.id_for_label }}" class="form-label">Bio</label>
+                                    {{ form.bio }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.languages.id_for_label }}" class="form-label">Languages</label>
+                                    {{ form.languages }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.skills.id_for_label }}" class="form-label">Skills & Competencies</label>
+                            {{ form.skills }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.certifications.id_for_label }}" class="form-label">Professional Certifications</label>
+                            {{ form.certifications }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.interests.id_for_label }}" class="form-label">Professional Interests</label>
+                            {{ form.interests }}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.linkedin_profile.id_for_label }}" class="form-label">LinkedIn Profile</label>
+                                    {{ form.linkedin_profile }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.portfolio_url.id_for_label }}" class="form-label">Portfolio URL</label>
+                                    {{ form.portfolio_url }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.profile_picture.id_for_label }}" class="form-label">Profile Picture</label>
+                                    {{ form.profile_picture }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.resume.id_for_label }}" class="form-label">Resume</label>
+                                    {{ form.resume }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <h6 class="mb-3">Emergency Contact Information</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.emergency_contact_name.id_for_label }}" class="form-label">Emergency Contact Name</label>
+                                    {{ form.emergency_contact_name }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.emergency_contact_relationship.id_for_label }}" class="form-label">Relationship</label>
+                                    {{ form.emergency_contact_relationship }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.emergency_contact_phone.id_for_label }}" class="form-label">Emergency Contact Phone</label>
+                                    {{ form.emergency_contact_phone }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.emergency_contact_email.id_for_label }}" class="form-label">Emergency Contact Email</label>
+                                    {{ form.emergency_contact_email }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <h6 class="mb-3">Financial Information</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.bank_name.id_for_label }}" class="form-label">Bank Name</label>
+                                    {{ form.bank_name }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.bank_account_number.id_for_label }}" class="form-label">Bank Account Number</label>
+                                    {{ form.bank_account_number }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.tax_id.id_for_label }}" class="form-label">Tax ID</label>
+                                    {{ form.tax_id }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.social_security_number.id_for_label }}" class="form-label">Social Security Number</label>
+                                    {{ form.social_security_number }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Save Profile
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Profile Completion
+                    </h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar" role="progressbar" 
+                                 style="width: {{ profile_completion }}%;" 
+                                 aria-valuenow="{{ profile_completion }}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                {{ profile_completion|floatformat:0 }}%
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-muted">
+                        {% if profile_completion >= 80 %}
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            Profile is complete!
+                        {% elif profile_completion >= 60 %}
+                            <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                            Almost there! Complete a few more fields.
+                        {% else %}
+                            <i class="fas fa-info-circle text-info me-2"></i>
+                            Keep going! Complete more fields to unlock features.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Profile Tips
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Add a professional bio
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            List your key skills
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Include certifications
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Add emergency contacts
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Update financial info
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
