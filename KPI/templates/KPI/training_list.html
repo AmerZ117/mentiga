@@ -1,0 +1,443 @@
+{% extends 'KPI/base.html' %}
+{% load static %}
+
+{% block title %}Training - Mentiga KPI System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-graduation-cap me-2"></i>Training Programs
+        </h1>
+        <a href="{% url 'KPI:training_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>New Training
+        </a>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Search & Filter</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Search</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           value="{{ request.GET.search }}" placeholder="Training title, employee name...">
+                </div>
+                <div class="col-md-2">
+                    <label for="department" class="form-label">Department</label>
+                    <select class="form-select" id="department" name="department">
+                        <option value="">All Departments</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.id }}" {% if request.GET.department == dept.id|stringformat:"s" %}selected{% endif %}>
+                            {{ dept.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">All Status</option>
+                        <option value="scheduled" {% if request.GET.status == 'scheduled' %}selected{% endif %}>Scheduled</option>
+                        <option value="in_progress" {% if request.GET.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                        <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>Completed</option>
+                        <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                        <option value="postponed" {% if request.GET.status == 'postponed' %}selected{% endif %}>Postponed</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="training_type" class="form-label">Type</label>
+                    <select class="form-select" id="training_type" name="training_type">
+                        <option value="">All Types</option>
+                        <option value="technical" {% if request.GET.training_type == 'technical' %}selected{% endif %}>Technical</option>
+                        <option value="soft_skills" {% if request.GET.training_type == 'soft_skills' %}selected{% endif %}>Soft Skills</option>
+                        <option value="leadership" {% if request.GET.training_type == 'leadership' %}selected{% endif %}>Leadership</option>
+                        <option value="compliance" {% if request.GET.training_type == 'compliance' %}selected{% endif %}>Compliance</option>
+                        <option value="certification" {% if request.GET.training_type == 'certification' %}selected{% endif %}>Certification</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i>Search
+                        </button>
+                        <a href="{% url 'KPI:training_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-times me-1"></i>Clear
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Training
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_trainings }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-graduation-cap fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Completed
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ completed_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                In Progress
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ in_progress_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Total Hours
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_hours }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Training Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Training List</h6>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown">
+                    <i class="fas fa-sort me-1"></i>Sort
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=employee__name">Employee Name</a></li>
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=-start_date">Start Date (Newest)</a></li>
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=start_date">Start Date (Oldest)</a></li>
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=-end_date">End Date (Latest)</a></li>
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=end_date">End Date (Earliest)</a></li>
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=-duration_hours">Duration (Longest)</a></li>
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=duration_hours">Duration (Shortest)</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if trainings %}
+            <div class="table-responsive">
+                <table class="table table-bordered" id="trainingsTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Training Title</th>
+                            <th>Type</th>
+                            <th>Provider</th>
+                            <th>Status</th>
+                            <th>Duration</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for training in trainings %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm me-2">
+                                        <i class="fas fa-user-circle fa-2x text-primary"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">{{ training.employee.name }}</div>
+                                        <small class="text-muted">{{ training.employee.department.name }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <div class="fw-bold">{{ training.title }}</div>
+                                    <small class="text-muted">{{ training.description|truncatechars:50 }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                {% if training.training_type == 'technical' %}
+                                    <span class="badge bg-primary">Technical</span>
+                                {% elif training.training_type == 'soft_skills' %}
+                                    <span class="badge bg-info">Soft Skills</span>
+                                {% elif training.training_type == 'leadership' %}
+                                    <span class="badge bg-warning">Leadership</span>
+                                {% elif training.training_type == 'compliance' %}
+                                    <span class="badge bg-danger">Compliance</span>
+                                {% elif training.training_type == 'certification' %}
+                                    <span class="badge bg-success">Certification</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div>
+                                    <div class="fw-bold">{{ training.provider }}</div>
+                                    {% if training.location %}
+                                        <small class="text-muted">{{ training.location }}</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                {% if training.status == 'scheduled' %}
+                                    <span class="badge bg-info">Scheduled</span>
+                                {% elif training.status == 'in_progress' %}
+                                    <span class="badge bg-warning">In Progress</span>
+                                {% elif training.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% elif training.status == 'cancelled' %}
+                                    <span class="badge bg-danger">Cancelled</span>
+                                {% elif training.status == 'postponed' %}
+                                    <span class="badge bg-secondary">Postponed</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div>
+                                    <div class="fw-bold">{{ training.duration_hours }} hours</div>
+                                    {% if training.cost %}
+                                        <small class="text-muted">${{ training.cost }}</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <div class="fw-bold">{{ training.start_date|date:"M d, Y" }}</div>
+                                    {% if training.start_date < today %}
+                                        <small class="text-danger">Started</small>
+                                    {% elif training.start_date|date:"Y-m-d" == today|date:"Y-m-d" %}
+                                        <small class="text-warning">Starts Today</small>
+                                    {% else %}
+                                        <small class="text-muted">{{ training.start_date|timeuntil }} to go</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <div class="fw-bold">{{ training.end_date|date:"M d, Y" }}</div>
+                                    {% if training.end_date < today %}
+                                        <small class="text-success">Ended</small>
+                                    {% elif training.end_date|date:"Y-m-d" == today|date:"Y-m-d" %}
+                                        <small class="text-warning">Ends Today</small>
+                                    {% else %}
+                                        <small class="text-muted">{{ training.end_date|timeuntil }} left</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'KPI:training_detail' training.id %}" 
+                                       class="btn btn-sm btn-outline-primary" title="View">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'KPI:training_edit' training.id %}" 
+                                       class="btn btn-sm btn-outline-warning" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% if training.status == 'scheduled' %}
+                                    <a href="#" class="btn btn-sm btn-outline-success" title="Start Training"
+                                       onclick="startTraining({{ training.id }})">
+                                        <i class="fas fa-play"></i>
+                                    </a>
+                                    {% elif training.status == 'in_progress' %}
+                                    <a href="#" class="btn btn-sm btn-outline-info" title="Complete Training"
+                                       onclick="completeTraining({{ training.id }})">
+                                        <i class="fas fa-check"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if trainings.has_other_pages %}
+            <nav aria-label="Training pagination">
+                <ul class="pagination justify-content-center">
+                    {% if trainings.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page=1">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ trainings.previous_page_number }}">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% for num in trainings.paginator.page_range %}
+                        {% if trainings.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > trainings.number|add:'-3' and num < trainings.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ num }}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if trainings.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ trainings.next_page_number }}">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ trainings.paginator.num_pages }}">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-graduation-cap fa-3x text-gray-300 mb-3"></i>
+                <h5 class="text-gray-500">No training programs found</h5>
+                <p class="text-gray-400">Try adjusting your search criteria or create a new training program.</p>
+                <a href="{% url 'KPI:training_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i>Create First Training
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Training Status Modal -->
+<div class="modal fade" id="trainingStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="statusModalTitle">Update Training Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="trainingStatusForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="comments" class="form-label">Comments</label>
+                        <textarea class="form-control" id="comments" name="comments" rows="3" 
+                                  placeholder="Describe the status update..."></textarea>
+                    </div>
+                    <div class="mb-3" id="scoreField" style="display: none;">
+                        <label for="score" class="form-label">Training Score (%)</label>
+                        <input type="number" class="form-control" id="score" name="score" 
+                               min="0" max="100" step="0.1" placeholder="Enter training score">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Status</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Initialize DataTable
+    $('#trainingsTable').DataTable({
+        "pageLength": 25,
+        "order": [[6, "asc"]], // Sort by start date by default
+        "language": {
+            "search": "Search training:",
+            "lengthMenu": "Show _MENU_ training programs per page",
+            "info": "Showing _START_ to _END_ of _TOTAL_ training programs",
+            "infoEmpty": "Showing 0 to 0 of 0 training programs",
+            "infoFiltered": "(filtered from _MAX_ total training programs)"
+        }
+    });
+
+    // Auto-submit form on filter change
+    $('#department, #status, #training_type').change(function() {
+        $(this).closest('form').submit();
+    });
+});
+
+function startTraining(trainingId) {
+    $('#statusModalTitle').text('Start Training');
+    $('#trainingStatusForm').attr('action', `/trainings/${trainingId}/update-status/`);
+    $('#trainingStatusForm input[name="status"]').remove();
+    $('<input>').attr({
+        type: 'hidden',
+        name: 'status',
+        value: 'in_progress'
+    }).appendTo('#trainingStatusForm');
+    $('#scoreField').hide();
+    $('#trainingStatusModal').modal('show');
+}
+
+function completeTraining(trainingId) {
+    $('#statusModalTitle').text('Complete Training');
+    $('#trainingStatusForm').attr('action', `/trainings/${trainingId}/update-status/`);
+    $('#trainingStatusForm input[name="status"]').remove();
+    $('<input>').attr({
+        type: 'hidden',
+        name: 'status',
+        value: 'completed'
+    }).appendTo('#trainingStatusForm');
+    $('#scoreField').show();
+    $('#trainingStatusModal').modal('show');
+}
+</script>
+{% endblock %}

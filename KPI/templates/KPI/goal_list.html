@@ -1,0 +1,410 @@
+{% extends 'KPI/base.html' %}
+{% load static %}
+
+{% block title %}Goals - Mentiga KPI System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-bullseye me-2"></i>Employee Goals
+        </h1>
+        <a href="{% url 'KPI:goal_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>New Goal
+        </a>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Search & Filter</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Search</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           value="{{ request.GET.search }}" placeholder="Goal title, employee name...">
+                </div>
+                <div class="col-md-2">
+                    <label for="department" class="form-label">Department</label>
+                    <select class="form-select" id="department" name="department">
+                        <option value="">All Departments</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.id }}" {% if request.GET.department == dept.id|stringformat:"s" %}selected{% endif %}>
+                            {{ dept.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">All Status</option>
+                        <option value="not_started" {% if request.GET.status == 'not_started' %}selected{% endif %}>Not Started</option>
+                        <option value="in_progress" {% if request.GET.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                        <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>Completed</option>
+                        <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="priority" class="form-label">Priority</label>
+                    <select class="form-select" id="priority" name="priority">
+                        <option value="">All Priorities</option>
+                        <option value="low" {% if request.GET.priority == 'low' %}selected{% endif %}>Low</option>
+                        <option value="medium" {% if request.GET.priority == 'medium' %}selected{% endif %}>Medium</option>
+                        <option value="high" {% if request.GET.priority == 'high' %}selected{% endif %}>High</option>
+                        <option value="critical" {% if request.GET.priority == 'critical' %}selected{% endif %}>Critical</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i>Search
+                        </button>
+                        <a href="{% url 'KPI:goal_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-times me-1"></i>Clear
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Goals
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_goals }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-bullseye fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Completed
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ completed_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                In Progress
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ in_progress_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Avg Progress
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ avg_progress|floatformat:1 }}%</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-pie fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Goals Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Goals List</h6>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown">
+                    <i class="fas fa-sort me-1"></i>Sort
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=employee__name">Employee Name</a></li>
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=-created_date">Created Date (Newest)</a></li>
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=created_date">Created Date (Oldest)</a></li>
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=-target_date">Target Date (Latest)</a></li>
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=target_date">Target Date (Earliest)</a></li>
+                                            <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=-progress">Progress (High to Low)</a></li>
+                        <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=progress">Progress (Low to High)</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if goals %}
+            <div class="table-responsive">
+                <table class="table table-bordered" id="goalsTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Goal Title</th>
+                            <th>Type</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Progress</th>
+                            <th>Target Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for goal in goals %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm me-2">
+                                        <i class="fas fa-user-circle fa-2x text-primary"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">{{ goal.employee.name }}</div>
+                                        <small class="text-muted">{{ goal.employee.department.name }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <div class="fw-bold">{{ goal.title }}</div>
+                                    <small class="text-muted">{{ goal.description|truncatechars:50 }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                {% if goal.goal_type == 'performance' %}
+                                    <span class="badge bg-primary">Performance</span>
+                                {% elif goal.goal_type == 'development' %}
+                                    <span class="badge bg-info">Development</span>
+                                {% elif goal.goal_type == 'project' %}
+                                    <span class="badge bg-warning">Project</span>
+                                {% elif goal.goal_type == 'learning' %}
+                                    <span class="badge bg-success">Learning</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if goal.priority == 'low' %}
+                                    <span class="badge bg-secondary">Low</span>
+                                {% elif goal.priority == 'medium' %}
+                                    <span class="badge bg-warning">Medium</span>
+                                {% elif goal.priority == 'high' %}
+                                    <span class="badge bg-danger">High</span>
+                                {% elif goal.priority == 'critical' %}
+                                    <span class="badge bg-dark">Critical</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if goal.status == 'not_started' %}
+                                    <span class="badge bg-secondary">Not Started</span>
+                                {% elif goal.status == 'in_progress' %}
+                                    <span class="badge bg-warning">In Progress</span>
+                                {% elif goal.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% elif goal.status == 'cancelled' %}
+                                    <span class="badge bg-danger">Cancelled</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress me-2" style="width: 80px; height: 8px;">
+                                        <div class="progress-bar" role="progressbar" 
+                                             style="width: {{ goal.progress }}%"></div>
+                                    </div>
+                                    <span class="fw-bold">{{ goal.progress }}%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <div class="fw-bold">{{ goal.target_date|date:"M d, Y" }}</div>
+                                    {% if goal.target_date < today %}
+                                        <small class="text-danger">Overdue</small>
+                                    {% elif goal.target_date|date:"Y-m-d" == today|date:"Y-m-d" %}
+                                        <small class="text-warning">Due Today</small>
+                                    {% else %}
+                                        <small class="text-muted">{{ goal.target_date|timeuntil }} left</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'KPI:goal_detail' goal.id %}" 
+                                       class="btn btn-sm btn-outline-primary" title="View">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'KPI:goal_edit' goal.id %}" 
+                                       class="btn btn-sm btn-outline-warning" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% if goal.status != 'completed' and goal.status != 'cancelled' %}
+                                    <a href="#" class="btn btn-sm btn-outline-success" title="Update Progress"
+                                       onclick="updateProgress({{ goal.id }})">
+                                        <i class="fas fa-chart-line"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if goals.has_other_pages %}
+            <nav aria-label="Goal pagination">
+                <ul class="pagination justify-content-center">
+                    {% if goals.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page=1">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ goals.previous_page_number }}">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% for num in goals.paginator.page_range %}
+                        {% if goals.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > goals.number|add:'-3' and num < goals.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ num }}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if goals.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ goals.next_page_number }}">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ goals.paginator.num_pages }}">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-bullseye fa-3x text-gray-300 mb-3"></i>
+                <h5 class="text-gray-500">No goals found</h5>
+                <p class="text-gray-400">Try adjusting your search criteria or create a new goal.</p>
+                <a href="{% url 'KPI:goal_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i>Create First Goal
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Progress Update Modal -->
+<div class="modal fade" id="progressModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Goal Progress</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="progressForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="progress_percentage" class="form-label">Progress Percentage</label>
+                        <input type="range" class="form-range" id="progress_percentage" name="progress_percentage" 
+                               min="0" max="100" step="5">
+                        <div class="text-center">
+                            <span id="progressValue">0</span>%
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="progress_comments" class="form-label">Comments</label>
+                        <textarea class="form-control" id="progress_comments" name="progress_comments" rows="3" 
+                                  placeholder="Describe the progress made..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Progress</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Initialize DataTable
+    $('#goalsTable').DataTable({
+        "pageLength": 25,
+        "order": [[6, "asc"]], // Sort by target date by default
+        "language": {
+            "search": "Search goals:",
+            "lengthMenu": "Show _MENU_ goals per page",
+            "info": "Showing _START_ to _END_ of _TOTAL_ goals",
+            "infoEmpty": "Showing 0 to 0 of 0 goals",
+            "infoFiltered": "(filtered from _MAX_ total goals)"
+        }
+    });
+
+    // Auto-submit form on filter change
+    $('#department, #status, #priority').change(function() {
+        $(this).closest('form').submit();
+    });
+
+    // Progress slider
+    $('#progress_percentage').on('input', function() {
+        $('#progressValue').text($(this).val());
+    });
+});
+
+function updateProgress(goalId) {
+    $('#progressForm').attr('action', `/goals/${goalId}/update-progress/`);
+    $('#progressModal').modal('show');
+}
+</script>
+{% endblock %}

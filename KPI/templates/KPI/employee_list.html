@@ -1,0 +1,210 @@
+{% extends 'KPI/base.html' %}
+
+{% block title %}Employees - Mentiga Corporation Berhad{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            <h1><i class="fas fa-users me-2"></i>Employees</h1>
+            <p class="text-muted mb-0">Manage employee information and performance</p>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'KPI:employee_create' %}" class="btn btn-primary">
+                <i class="fas fa-user-plus me-2"></i>Add Employee
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label for="search" class="form-label">Search</label>
+                <input type="text" class="form-control" id="search" name="search" 
+                       value="{{ search }}" placeholder="Search by name, ID, or email...">
+            </div>
+            <div class="col-md-3">
+                <label for="department" class="form-label">Department</label>
+                <select class="form-control" id="department" name="department">
+                    <option value="">All Departments</option>
+                    {% for dept in departments %}
+                        <option value="{{ dept.id }}" {% if selected_department == dept.id|stringformat:"s" %}selected{% endif %}>
+                            {{ dept.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="status" class="form-label">Status</label>
+                <select class="form-control" id="status" name="status">
+                    <option value="">All Status</option>
+                    <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>Inactive</option>
+                    <option value="terminated" {% if selected_status == 'terminated' %}selected{% endif %}>Terminated</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-1"></i>Search
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Employees Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-list me-2"></i>Employee List
+            <span class="badge bg-secondary ms-2">{{ employees.count }} employees</span>
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if employees %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Employee ID</th>
+                            <th>Name</th>
+                            <th>Department</th>
+                            <th>Position</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th>Hire Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for employee in employees %}
+                        <tr>
+                            <td>
+                                <strong>{{ employee.employee_id }}</strong>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm me-3">
+                                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" 
+                                             style="width: 40px; height: 40px;">
+                                            <span class="text-white fw-bold">
+                                                {{ employee.first_name|first }}{{ employee.last_name|first }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">{{ employee.full_name }}</div>
+                                        {% if employee.manager %}
+                                            <small class="text-muted">Reports to: {{ employee.manager.full_name }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">{{ employee.department.name }}</span>
+                            </td>
+                            <td>{{ employee.position }}</td>
+                            <td>
+                                <a href="mailto:{{ employee.email }}" class="text-decoration-none">
+                                    {{ employee.email }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if employee.status == 'active' %}
+                                    <span class="badge bg-success">Active</span>
+                                {% elif employee.status == 'inactive' %}
+                                    <span class="badge bg-warning">Inactive</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Terminated</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ employee.hire_date|date:"M d, Y" }}</td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'KPI:employee_detail' employee.id %}" 
+                                       class="btn btn-sm btn-outline-primary" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'KPI:employee_edit' employee.id %}" 
+                                       class="btn btn-sm btn-outline-secondary" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'KPI:evaluation_create' %}?employee={{ employee.id }}" 
+                                       class="btn btn-sm btn-outline-success" title="Create Evaluation">
+                                        <i class="fas fa-clipboard-check"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No employees found</h5>
+                <p class="text-muted">Try adjusting your search criteria or add a new employee.</p>
+                <a href="{% url 'KPI:employee_create' %}" class="btn btn-primary">
+                    <i class="fas fa-user-plus me-2"></i>Add First Employee
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Department Summary -->
+{% if departments %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Department Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for dept in departments %}
+                    <div class="col-md-3 mb-3">
+                        <div class="border rounded p-3 text-center">
+                            <h6 class="text-muted mb-2">{{ dept.name }}</h6>
+                            <h4 class="text-primary mb-1">{{ dept.employee_set.count }}</h4>
+                            <small class="text-muted">employees</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-submit form when filters change
+document.getElementById('department').addEventListener('change', function() {
+    this.form.submit();
+});
+
+document.getElementById('status').addEventListener('change', function() {
+    this.form.submit();
+});
+
+// Clear search functionality
+function clearSearch() {
+    document.getElementById('search').value = '';
+    document.getElementById('department').value = '';
+    document.getElementById('status').value = '';
+    document.querySelector('form').submit();
+}
+</script>
+{% endblock %}
+
+

@@ -1,0 +1,346 @@
+{% extends 'KPI/base.html' %}
+{% load static %}
+
+{% block title %}Evaluations - Mentiga KPI System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-clipboard-check me-2"></i>Employee Evaluations
+        </h1>
+        <a href="{% url 'KPI:evaluation_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>New Evaluation
+        </a>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Search & Filter</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Search</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           value="{{ request.GET.search }}" placeholder="Employee name, department...">
+                </div>
+                <div class="col-md-2">
+                    <label for="department" class="form-label">Department</label>
+                    <select class="form-select" id="department" name="department">
+                        <option value="">All Departments</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.id }}" {% if request.GET.department == dept.id|stringformat:"s" %}selected{% endif %}>
+                            {{ dept.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">All Status</option>
+                        <option value="draft" {% if request.GET.status == 'draft' %}selected{% endif %}>Draft</option>
+                        <option value="in_progress" {% if request.GET.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                        <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>Completed</option>
+                        <option value="reviewed" {% if request.GET.status == 'reviewed' %}selected{% endif %}>Reviewed</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="rating" class="form-label">Rating</label>
+                    <select class="form-select" id="rating" name="rating">
+                        <option value="">All Ratings</option>
+                        <option value="excellent" {% if request.GET.rating == 'excellent' %}selected{% endif %}>Excellent</option>
+                        <option value="good" {% if request.GET.rating == 'good' %}selected{% endif %}>Good</option>
+                        <option value="satisfactory" {% if request.GET.rating == 'satisfactory' %}selected{% endif %}>Satisfactory</option>
+                        <option value="needs_improvement" {% if request.GET.rating == 'needs_improvement' %}selected{% endif %}>Needs Improvement</option>
+                        <option value="unsatisfactory" {% if request.GET.rating == 'unsatisfactory' %}selected{% endif %}>Unsatisfactory</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i>Search
+                        </button>
+                        <a href="{% url 'KPI:evaluation_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-times me-1"></i>Clear
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Evaluations
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_evaluations }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-check fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Completed
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ completed_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                In Progress
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ in_progress_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Average Score
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ avg_score|floatformat:1 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Evaluations Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Evaluation List</h6>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown">
+                    <i class="fas fa-sort me-1"></i>Sort
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=employee__name">Employee Name</a></li>
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=-evaluation_date">Date (Newest)</a></li>
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=evaluation_date">Date (Oldest)</a></li>
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=-overall_score">Score (High to Low)</a></li>
+                    <li><a class="dropdown-item" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sort=overall_score">Score (Low to High)</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if evaluations %}
+            <div class="table-responsive">
+                <table class="table table-bordered" id="evaluationsTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Department</th>
+                            <th>Evaluation Period</th>
+                            <th>Status</th>
+                            <th>Overall Score</th>
+                            <th>Rating</th>
+                            <th>Evaluator</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for evaluation in evaluations %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm me-2">
+                                        <i class="fas fa-user-circle fa-2x text-primary"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">{{ evaluation.employee.name }}</div>
+                                        <small class="text-muted">{{ evaluation.employee.employee_id }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">{{ evaluation.employee.department.name }}</span>
+                            </td>
+                            <td>{{ evaluation.evaluation_period.name }}</td>
+                            <td>
+                                {% if evaluation.status == 'draft' %}
+                                    <span class="badge bg-secondary">Draft</span>
+                                {% elif evaluation.status == 'in_progress' %}
+                                    <span class="badge bg-warning">In Progress</span>
+                                {% elif evaluation.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% elif evaluation.status == 'reviewed' %}
+                                    <span class="badge bg-info">Reviewed</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress me-2" style="width: 60px; height: 8px;">
+                                        <div class="progress-bar" role="progressbar" 
+                                             style="width: {{ evaluation.overall_score }}%"></div>
+                                    </div>
+                                    <span class="fw-bold">{{ evaluation.overall_score|floatformat:1 }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                {% if evaluation.performance_rating == 'excellent' %}
+                                    <span class="badge bg-success">Excellent</span>
+                                {% elif evaluation.performance_rating == 'good' %}
+                                    <span class="badge bg-primary">Good</span>
+                                {% elif evaluation.performance_rating == 'satisfactory' %}
+                                    <span class="badge bg-warning">Satisfactory</span>
+                                {% elif evaluation.performance_rating == 'needs_improvement' %}
+                                    <span class="badge bg-orange">Needs Improvement</span>
+                                {% elif evaluation.performance_rating == 'unsatisfactory' %}
+                                    <span class="badge bg-danger">Unsatisfactory</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ evaluation.evaluator.name }}</td>
+                            <td>{{ evaluation.evaluation_date|date:"M d, Y" }}</td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'KPI:evaluation_detail' evaluation.id %}" 
+                                       class="btn btn-sm btn-outline-primary" title="View">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'KPI:evaluation_edit' evaluation.id %}" 
+                                       class="btn btn-sm btn-outline-warning" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% if evaluation.status == 'draft' %}
+                                    <a href="{% url 'KPI:evaluation_submit' evaluation.id %}" 
+                                       class="btn btn-sm btn-outline-success" title="Submit"
+                                       onclick="return confirm('Are you sure you want to submit this evaluation?')">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if evaluations.has_other_pages %}
+            <nav aria-label="Evaluation pagination">
+                <ul class="pagination justify-content-center">
+                    {% if evaluations.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page=1">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ evaluations.previous_page_number }}">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% for num in evaluations.paginator.page_range %}
+                        {% if evaluations.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > evaluations.number|add:'-3' and num < evaluations.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ num }}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if evaluations.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ evaluations.next_page_number }}">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ evaluations.paginator.num_pages }}">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-clipboard-check fa-3x text-gray-300 mb-3"></i>
+                <h5 class="text-gray-500">No evaluations found</h5>
+                <p class="text-gray-400">Try adjusting your search criteria or create a new evaluation.</p>
+                <a href="{% url 'KPI:evaluation_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i>Create First Evaluation
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Initialize DataTable
+    $('#evaluationsTable').DataTable({
+        "pageLength": 25,
+        "order": [[7, "desc"]], // Sort by date by default
+        "language": {
+            "search": "Search evaluations:",
+            "lengthMenu": "Show _MENU_ evaluations per page",
+            "info": "Showing _START_ to _END_ of _TOTAL_ evaluations",
+            "infoEmpty": "Showing 0 to 0 of 0 evaluations",
+            "infoFiltered": "(filtered from _MAX_ total evaluations)"
+        }
+    });
+
+    // Auto-submit form on filter change
+    $('#department, #status, #rating').change(function() {
+        $(this).closest('form').submit();
+    });
+});
+</script>
+{% endblock %}

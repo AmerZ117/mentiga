@@ -1,0 +1,287 @@
+{% extends 'KPI/base.html' %}
+{% load static %}
+
+{% block title %}{{ evaluation.employee.full_name }} - Evaluation Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-clipboard-check me-2"></i>Evaluation Details
+        </h1>
+        <div class="btn-group" role="group">
+            <a href="{% url 'KPI:evaluation_edit' evaluation.id %}" class="btn btn-outline-primary">
+                <i class="fas fa-edit me-1"></i>Edit Evaluation
+            </a>
+            <a href="{% url 'KPI:evaluation_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Evaluations
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Evaluation Information Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Evaluation Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h4 class="text-primary">{{ evaluation.employee.full_name }}</h4>
+                            <p class="text-muted mb-3">{{ evaluation.period.name }} - {{ evaluation.period.start_date|date:"M Y" }} to {{ evaluation.period.end_date|date:"M Y" }}</p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <span class="badge bg-{% if evaluation.status == 'approved' %}success{% elif evaluation.status == 'submitted' %}warning{% elif evaluation.status == 'rejected' %}danger{% else %}secondary{% endif %} fs-6">
+                                {{ evaluation.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <h6 class="font-weight-bold">Employee</h6>
+                            <p><a href="{% url 'KPI:employee_detail' evaluation.employee.id %}">{{ evaluation.employee.full_name }}</a></p>
+                            
+                            <h6 class="font-weight-bold">Department</h6>
+                            <p>{{ evaluation.employee.department.name }}</p>
+                            
+                            <h6 class="font-weight-bold">Position</h6>
+                            <p>{{ evaluation.employee.position }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="font-weight-bold">Evaluator</h6>
+                            <p>{{ evaluation.evaluator.full_name }}</p>
+                            
+                            <h6 class="font-weight-bold">Evaluation Period</h6>
+                            <p>{{ evaluation.period.name }}</p>
+                            
+                            <h6 class="font-weight-bold">Created</h6>
+                            <p>{{ evaluation.created_at|date:"F d, Y" }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Performance Score -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h6 class="font-weight-bold">Overall Performance Score</h6>
+                            <div class="progress mb-2" style="height: 30px;">
+                                <div class="progress-bar bg-{% if evaluation.overall_score >= 90 %}success{% elif evaluation.overall_score >= 80 %}info{% elif evaluation.overall_score >= 70 %}warning{% else %}danger{% endif %}" 
+                                     role="progressbar" style="width: {{ evaluation.overall_score }}%" 
+                                     aria-valuenow="{{ evaluation.overall_score }}" aria-valuemin="0" aria-valuemax="100">
+                                    {{ evaluation.overall_score }}%
+                                </div>
+                            </div>
+                            <p class="text-muted">Performance Rating: <strong>{{ evaluation.get_performance_rating_display }}</strong></p>
+                        </div>
+                    </div>
+
+                    {% if evaluation.comments %}
+                    <div class="mt-4">
+                        <h6 class="font-weight-bold">Evaluator Comments</h6>
+                        <p>{{ evaluation.comments }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if evaluation.employee_comments %}
+                    <div class="mt-4">
+                        <h6 class="font-weight-bold">Employee Comments</h6>
+                        <p>{{ evaluation.employee_comments }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if evaluation.strengths %}
+                    <div class="mt-4">
+                        <h6 class="font-weight-bold">Strengths</h6>
+                        <p>{{ evaluation.strengths }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if evaluation.areas_for_improvement %}
+                    <div class="mt-4">
+                        <h6 class="font-weight-bold">Areas for Improvement</h6>
+                        <p>{{ evaluation.areas_for_improvement }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if evaluation.development_plan %}
+                    <div class="mt-4">
+                        <h6 class="font-weight-bold">Development Plan</h6>
+                        <p>{{ evaluation.development_plan }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- KPI Details -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">KPI Assessment Details</h6>
+                </div>
+                <div class="card-body">
+                    {% if evaluation.details.all %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>KPI</th>
+                                        <th>Category</th>
+                                        <th>Target</th>
+                                        <th>Actual</th>
+                                        <th>Score</th>
+                                        <th>Weight</th>
+                                        <th>Comments</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for detail in evaluation.details.all %}
+                                    <tr>
+                                        <td>{{ detail.kpi.name }}</td>
+                                        <td>{{ detail.kpi.category.name }}</td>
+                                        <td>{{ detail.target_value }}</td>
+                                        <td>{{ detail.actual_value|default:"N/A" }}</td>
+                                        <td>
+                                            <span class="badge bg-{% if detail.score >= 90 %}success{% elif detail.score >= 80 %}info{% elif detail.score >= 70 %}warning{% else %}danger{% endif %}">
+                                                {{ detail.score|default:"N/A" }}
+                                            </span>
+                                        </td>
+                                        <td>{{ detail.weight }}%</td>
+                                        <td>{{ detail.comments|default:"-" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-chart-bar fa-2x text-gray-300 mb-3"></i>
+                            <p class="text-gray-500">No KPI details available</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Competency Assessment -->
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Competency Assessment</h6>
+                </div>
+                <div class="card-body">
+                    {% if evaluation.competency_assessments.all %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Competency</th>
+                                        <th>Category</th>
+                                        <th>Rating</th>
+                                        <th>Comments</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for assessment in evaluation.competency_assessments.all %}
+                                    <tr>
+                                        <td>{{ assessment.competency.name }}</td>
+                                        <td>{{ assessment.competency.category }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="me-2">
+                                                    {% for i in "12345" %}
+                                                        <i class="fas fa-star {% if forloop.counter <= assessment.rating %}text-warning{% else %}text-muted{% endif %}"></i>
+                                                    {% endfor %}
+                                                </div>
+                                                <span class="badge bg-primary">{{ assessment.rating }}/5</span>
+                                            </div>
+                                        </td>
+                                        <td>{{ assessment.comments|default:"-" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-star fa-2x text-gray-300 mb-3"></i>
+                            <p class="text-gray-500">No competency assessments available</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    {% if evaluation.status == 'draft' %}
+                    <a href="{% url 'KPI:evaluation_submit' evaluation.id %}" class="btn btn-success btn-block mb-2"
+                       onclick="return confirm('Are you sure you want to submit this evaluation?')">
+                        <i class="fas fa-paper-plane me-1"></i>Submit Evaluation
+                    </a>
+                    {% endif %}
+                    
+                    <a href="{% url 'KPI:evaluation_edit' evaluation.id %}" class="btn btn-warning btn-block mb-2">
+                        <i class="fas fa-edit me-1"></i>Edit Evaluation
+                    </a>
+                    
+                    <a href="{% url 'KPI:employee_detail' evaluation.employee.id %}" class="btn btn-info btn-block">
+                        <i class="fas fa-user me-1"></i>View Employee
+                    </a>
+                </div>
+            </div>
+
+            <!-- Evaluation Statistics -->
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Evaluation Statistics</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <h4 class="text-primary">{{ evaluation.overall_score|default:"N/A" }}</h4>
+                                <small class="text-muted">Overall Score</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-info">{{ evaluation.details.count }}</h4>
+                            <small class="text-muted">KPIs Assessed</small>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <h4 class="text-success">{{ evaluation.competency_assessments.count }}</h4>
+                                <small class="text-muted">Competencies</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-warning">{{ evaluation.get_performance_rating_display }}</h4>
+                            <small class="text-muted">Rating</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Initialize tooltips
+    $('[data-bs-toggle="tooltip"]').tooltip();
+});
+</script>
+{% endblock %}
+
+

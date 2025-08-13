@@ -1,0 +1,355 @@
+{% extends 'KPI/base.html' %}
+{% load static %}
+
+{% block title %}{{ training.title }} - Training Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-graduation-cap me-2"></i>Training Details
+        </h1>
+        <div class="btn-group" role="group">
+            <a href="{% url 'KPI:training_edit' training.id %}" class="btn btn-outline-primary">
+                <i class="fas fa-edit me-1"></i>Edit Training
+            </a>
+            <a href="{% url 'KPI:training_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Training
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Training Information Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Training Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h4 class="text-primary">{{ training.title }}</h4>
+                            <p class="text-muted mb-3">{{ training.description }}</p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <span class="badge bg-{% if training.status == 'completed' %}success{% elif training.status == 'in_progress' %}warning{% elif training.status == 'cancelled' %}danger{% else %}secondary{% endif %} fs-6">
+                                {{ training.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <h6 class="font-weight-bold">Employee</h6>
+                            <p><a href="{% url 'KPI:employee_detail' training.employee.id %}">{{ training.employee.full_name }}</a></p>
+                            
+                            <h6 class="font-weight-bold">Training Type</h6>
+                            <p>{{ training.get_training_type_display }}</p>
+                            
+                            {% if training.provider %}
+                            <h6 class="font-weight-bold">Provider</h6>
+                            <p>{{ training.provider }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="font-weight-bold">Start Date</h6>
+                            <p>{{ training.start_date|date:"F d, Y" }}</p>
+                            
+                            <h6 class="font-weight-bold">End Date</h6>
+                            <p>{{ training.end_date|date:"F d, Y" }}</p>
+                            
+                            {% if training.duration_hours %}
+                            <h6 class="font-weight-bold">Duration</h6>
+                            <p>{{ training.duration_hours }} hours</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if training.location %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6 class="font-weight-bold">Location</h6>
+                            <p>{{ training.location }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if training.cost %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6 class="font-weight-bold">Cost</h6>
+                            <p>RM {{ training.cost }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if training.score %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6 class="font-weight-bold">Training Score</h6>
+                            <div class="progress mb-2" style="height: 25px;">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                     style="width: {{ training.score }}%" aria-valuenow="{{ training.score }}" 
+                                     aria-valuemin="0" aria-valuemax="100">
+                                    {{ training.score }}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if training.objectives %}
+                    <div class="mt-4">
+                        <h6 class="font-weight-bold">Training Objectives</h6>
+                        <p>{{ training.objectives }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if training.outcomes %}
+                    <div class="mt-4">
+                        <h6 class="font-weight-bold">Expected Outcomes</h6>
+                        <p>{{ training.outcomes }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if training.feedback %}
+                    <div class="mt-4">
+                        <h6 class="font-weight-bold">Feedback</h6>
+                        <p>{{ training.feedback }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if training.certificate %}
+                    <div class="mt-4">
+                        <h6 class="font-weight-bold">Certificate</h6>
+                        <a href="{{ training.certificate.url }}" class="btn btn-outline-success" target="_blank">
+                            <i class="fas fa-download me-1"></i>Download Certificate
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Training Timeline -->
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Training Timeline</h6>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-primary"></div>
+                            <div class="timeline-content">
+                                <div class="d-flex justify-content-between">
+                                    <h6 class="font-weight-bold">Training Created</h6>
+                                    <small class="text-muted">{{ training.created_at|date:"M d, Y" }}</small>
+                                </div>
+                                <p class="mb-2">Training program was created and scheduled</p>
+                            </div>
+                        </div>
+                        
+                        {% if training.status != 'planned' %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-warning"></div>
+                            <div class="timeline-content">
+                                <div class="d-flex justify-content-between">
+                                    <h6 class="font-weight-bold">Training Started</h6>
+                                    <small class="text-muted">{{ training.start_date|date:"M d, Y" }}</small>
+                                </div>
+                                <p class="mb-2">Training program began</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if training.status == 'completed' %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-success"></div>
+                            <div class="timeline-content">
+                                <div class="d-flex justify-content-between">
+                                    <h6 class="font-weight-bold">Training Completed</h6>
+                                    <small class="text-muted">{{ training.end_date|date:"M d, Y" }}</small>
+                                </div>
+                                <p class="mb-2">Training program was successfully completed</p>
+                                {% if training.score %}
+                                <p class="mb-0"><strong>Final Score:</strong> {{ training.score }}%</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    {% if training.status == 'planned' %}
+                    <a href="#" class="btn btn-success btn-block mb-2" onclick="startTraining({{ training.id }})">
+                        <i class="fas fa-play me-1"></i>Start Training
+                    </a>
+                    {% elif training.status == 'in_progress' %}
+                    <a href="#" class="btn btn-info btn-block mb-2" onclick="completeTraining({{ training.id }})">
+                        <i class="fas fa-check me-1"></i>Complete Training
+                    </a>
+                    {% endif %}
+                    
+                    <a href="{% url 'KPI:training_edit' training.id %}" class="btn btn-warning btn-block mb-2">
+                        <i class="fas fa-edit me-1"></i>Edit Training
+                    </a>
+                    
+                    <a href="{% url 'KPI:employee_detail' training.employee.id %}" class="btn btn-info btn-block">
+                        <i class="fas fa-user me-1"></i>View Employee
+                    </a>
+                </div>
+            </div>
+
+            <!-- Training Statistics -->
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Training Statistics</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <h4 class="text-primary">{{ training.duration_hours|default:0 }}</h4>
+                                <small class="text-muted">Hours</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-info">{{ training.score|default:'N/A' }}</h4>
+                            <small class="text-muted">Score</small>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <h4 class="text-success">{{ training.days_remaining }}</h4>
+                                <small class="text-muted">Days Left</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-warning">{{ training.days_overdue|default:0 }}</h4>
+                            <small class="text-muted">Days Overdue</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Training Status Modal -->
+<div class="modal fade" id="trainingStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="statusModalTitle">Update Training Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="trainingStatusForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="comments" class="form-label">Comments</label>
+                        <textarea class="form-control" id="comments" name="comments" rows="3" 
+                                  placeholder="Describe the status update..."></textarea>
+                    </div>
+                    <div class="mb-3" id="scoreField" style="display: none;">
+                        <label for="score" class="form-label">Training Score (%)</label>
+                        <input type="number" class="form-control" id="score" name="score" 
+                               min="0" max="100" step="0.1" placeholder="Enter training score">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Status</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function startTraining(trainingId) {
+    $('#statusModalTitle').text('Start Training');
+    $('#trainingStatusForm').attr('action', `/trainings/${trainingId}/update-status/`);
+    $('#trainingStatusForm input[name="status"]').remove();
+    $('<input>').attr({
+        type: 'hidden',
+        name: 'status',
+        value: 'in_progress'
+    }).appendTo('#trainingStatusForm');
+    $('#scoreField').hide();
+    $('#trainingStatusModal').modal('show');
+}
+
+function completeTraining(trainingId) {
+    $('#statusModalTitle').text('Complete Training');
+    $('#trainingStatusForm').attr('action', `/trainings/${trainingId}/update-status/`);
+    $('#trainingStatusForm input[name="status"]').remove();
+    $('<input>').attr({
+        type: 'hidden',
+        name: 'status',
+        value: 'completed'
+    }).appendTo('#trainingStatusForm');
+    $('#scoreField').show();
+    $('#trainingStatusModal').modal('show');
+}
+</script>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -35px;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #007bff;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #007bff;
+}
+
+.timeline-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: -29px;
+    top: 17px;
+    width: 2px;
+    height: calc(100% + 10px);
+    background-color: #e3e6f0;
+}
+
+.timeline-content {
+    background-color: #f8f9fc;
+    padding: 15px;
+    border-radius: 5px;
+    border-left: 3px solid #007bff;
+}
+</style>
+{% endblock %}
+
+

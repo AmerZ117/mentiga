@@ -1,0 +1,202 @@
+{% extends 'KPI/base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - Mentiga KPI System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-clipboard-check me-2"></i>{{ title }}
+        </h1>
+        <a href="{% url 'KPI:evaluation_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Evaluations
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{{ action }} Evaluation</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.employee.id_for_label }}" class="form-label">Employee *</label>
+                                    {{ form.employee }}
+                                    {% if form.employee.errors %}
+                                        <div class="text-danger">{{ form.employee.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.evaluator.id_for_label }}" class="form-label">Evaluator *</label>
+                                    {{ form.evaluator }}
+                                    {% if form.evaluator.errors %}
+                                        <div class="text-danger">{{ form.evaluator.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.period.id_for_label }}" class="form-label">Evaluation Period *</label>
+                                    {{ form.period }}
+                                    {% if form.period.errors %}
+                                        <div class="text-danger">{{ form.period.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.status.id_for_label }}" class="form-label">Status *</label>
+                                    {{ form.status }}
+                                    {% if form.status.errors %}
+                                        <div class="text-danger">{{ form.status.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.overall_score.id_for_label }}" class="form-label">Overall Score (%)</label>
+                                    {{ form.overall_score }}
+                                    {% if form.overall_score.errors %}
+                                        <div class="text-danger">{{ form.overall_score.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.performance_rating.id_for_label }}" class="form-label">Performance Rating</label>
+                                    {{ form.performance_rating }}
+                                    {% if form.performance_rating.errors %}
+                                        <div class="text-danger">{{ form.performance_rating.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.comments.id_for_label }}" class="form-label">Evaluator Comments</label>
+                            {{ form.comments }}
+                            {% if form.comments.errors %}
+                                <div class="text-danger">{{ form.comments.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.employee_comments.id_for_label }}" class="form-label">Employee Comments</label>
+                            {{ form.employee_comments }}
+                            {% if form.employee_comments.errors %}
+                                <div class="text-danger">{{ form.employee_comments.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.strengths.id_for_label }}" class="form-label">Strengths</label>
+                            {{ form.strengths }}
+                            {% if form.strengths.errors %}
+                                <div class="text-danger">{{ form.strengths.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.areas_for_improvement.id_for_label }}" class="form-label">Areas for Improvement</label>
+                            {{ form.areas_for_improvement }}
+                            {% if form.areas_for_improvement.errors %}
+                                <div class="text-danger">{{ form.areas_for_improvement.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.development_plan.id_for_label }}" class="form-label">Development Plan</label>
+                            {{ form.development_plan }}
+                            {% if form.development_plan.errors %}
+                                <div class="text-danger">{{ form.development_plan.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'KPI:evaluation_list' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>{{ action }} Evaluation
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Evaluation Guidelines</h6>
+                </div>
+                <div class="card-body">
+                    <h6 class="font-weight-bold">Performance Ratings</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>Excellent (90-100):</strong> Outstanding performance</li>
+                        <li><strong>Very Good (80-89):</strong> Above average performance</li>
+                        <li><strong>Good (70-79):</strong> Meets expectations</li>
+                        <li><strong>Satisfactory (60-69):</strong> Below expectations</li>
+                        <li><strong>Needs Improvement (0-59):</strong> Significant improvement needed</li>
+                    </ul>
+                    
+                    <hr>
+                    
+                    <h6 class="font-weight-bold">Evaluation Status</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>Draft:</strong> Work in progress</li>
+                        <li><strong>Submitted:</strong> Ready for review</li>
+                        <li><strong>Under Review:</strong> Being evaluated</li>
+                        <li><strong>Approved:</strong> Finalized</li>
+                        <li><strong>Rejected:</strong> Needs revision</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Auto-calculate performance rating based on overall score
+    $('#id_overall_score').on('input', function() {
+        var score = parseFloat($(this).val());
+        var rating = '';
+        
+        if (score >= 90) {
+            rating = 'excellent';
+        } else if (score >= 80) {
+            rating = 'very_good';
+        } else if (score >= 70) {
+            rating = 'good';
+        } else if (score >= 60) {
+            rating = 'satisfactory';
+        } else {
+            rating = 'needs_improvement';
+        }
+        
+        $('#id_performance_rating').val(rating);
+    });
+});
+</script>
+{% endblock %}
+
+

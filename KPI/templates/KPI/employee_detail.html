@@ -1,0 +1,295 @@
+{% extends 'KPI/base.html' %}
+
+{% block title %}{{ employee.full_name }} - Employee Details{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            <h1><i class="fas fa-user me-2"></i>{{ employee.full_name }}</h1>
+            <p class="text-muted mb-0">{{ employee.position }} • {{ employee.department.name }}</p>
+        </div>
+        <div class="col-auto">
+            <div class="btn-group" role="group">
+                <a href="{% url 'KPI:employee_edit' employee.id %}" class="btn btn-outline-primary">
+                    <i class="fas fa-edit me-2"></i>Edit
+                </a>
+                <a href="{% url 'KPI:evaluation_create' %}?employee={{ employee.id }}" class="btn btn-primary">
+                    <i class="fas fa-clipboard-check me-2"></i>New Evaluation
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Employee Information -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Employee Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                         style="width: 80px; height: 80px;">
+                        <span class="text-white fw-bold fs-4">
+                            {{ employee.first_name|first }}{{ employee.last_name|first }}
+                        </span>
+                    </div>
+                    <h5 class="mb-1">{{ employee.full_name }}</h5>
+                    <p class="text-muted mb-0">{{ employee.position }}</p>
+                </div>
+                
+                <div class="row">
+                    <div class="col-12">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Employee ID:</strong></td>
+                                <td>{{ employee.employee_id }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Department:</strong></td>
+                                <td><span class="badge bg-light text-dark">{{ employee.department.name }}</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Email:</strong></td>
+                                <td><a href="mailto:{{ employee.email }}">{{ employee.email }}</a></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Phone:</strong></td>
+                                <td>{{ employee.phone|default:"Not provided" }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Hire Date:</strong></td>
+                                <td>{{ employee.hire_date|date:"M d, Y" }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>
+                                    {% if employee.status == 'active' %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% elif employee.status == 'inactive' %}
+                                        <span class="badge bg-warning">Inactive</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Terminated</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if employee.manager %}
+                            <tr>
+                                <td><strong>Manager:</strong></td>
+                                <td><a href="{% url 'KPI:employee_detail' employee.manager.id %}">{{ employee.manager.full_name }}</a></td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Performance Summary -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Performance Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <h3 class="text-primary mb-0">{{ avg_score|floatformat:1 }}%</h3>
+                    <small class="text-muted">Average Score</small>
+                </div>
+                
+                <div class="row text-center">
+                    <div class="col-4">
+                        <h6 class="mb-1">{{ evaluations.count }}</h6>
+                        <small class="text-muted">Evaluations</small>
+                    </div>
+                    <div class="col-4">
+                        <h6 class="mb-1">{{ goals.count }}</h6>
+                        <small class="text-muted">Goals</small>
+                    </div>
+                    <div class="col-4">
+                        <h6 class="mb-1">{{ trainings.count }}</h6>
+                        <small class="text-muted">Training</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="col-md-8">
+        <!-- Evaluations -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Evaluations</h5>
+                <a href="{% url 'KPI:evaluation_create' %}?employee={{ employee.id }}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-plus me-1"></i>New
+                </a>
+            </div>
+            <div class="card-body">
+                {% if evaluations %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Period</th>
+                                    <th>Evaluator</th>
+                                    <th>Score</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for evaluation in evaluations %}
+                                <tr>
+                                    <td>{{ evaluation.period.name }}</td>
+                                    <td>{{ evaluation.evaluator.full_name }}</td>
+                                    <td>
+                                        {% if evaluation.overall_score %}
+                                            <span class="badge bg-success">{{ evaluation.overall_score|floatformat:1 }}%</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if evaluation.status == 'approved' %}
+                                            <span class="badge bg-success">Approved</span>
+                                        {% elif evaluation.status == 'submitted' %}
+                                            <span class="badge bg-warning">Submitted</span>
+                                        {% elif evaluation.status == 'draft' %}
+                                            <span class="badge bg-secondary">Draft</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ evaluation.status|title }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ evaluation.created_at|date:"M d, Y" }}</td>
+                                    <td>
+                                        <a href="{% url 'KPI:evaluation_detail' evaluation.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center">No evaluations found for this employee.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Goals -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-bullseye me-2"></i>Goals</h5>
+                <a href="{% url 'KPI:goal_create' %}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-plus me-1"></i>New
+                </a>
+            </div>
+            <div class="card-body">
+                {% if goals %}
+                    {% for goal in goals %}
+                    <div class="border rounded p-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">{{ goal.title }}</h6>
+                                <p class="text-muted mb-2">{{ goal.description }}</p>
+                                <div class="d-flex align-items-center">
+                                    <span class="badge me-2
+                                        {% if goal.status == 'completed' %}bg-success
+                                        {% elif goal.status == 'in_progress' %}bg-warning
+                                        {% elif goal.status == 'overdue' %}bg-danger
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ goal.status|title }}
+                                    </span>
+                                    <small class="text-muted">Target: {{ goal.target_date|date:"M d, Y" }}</small>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div class="progress mb-2" style="width: 100px;">
+                                    <div class="progress-bar" style="width: {{ goal.progress }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ goal.progress }}% complete</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center">No goals found for this employee.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Training -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Training</h5>
+                <a href="{% url 'KPI:training_create' %}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-plus me-1"></i>New
+                </a>
+            </div>
+            <div class="card-body">
+                {% if trainings %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Training</th>
+                                    <th>Period</th>
+                                    <th>Status</th>
+                                    <th>Score</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for training in trainings %}
+                                <tr>
+                                    <td>
+                                        <div>
+                                            <strong>{{ training.title }}</strong>
+                                            <br><small class="text-muted">{{ training.description|truncatewords:10 }}</small>
+                                        </div>
+                                    </td>
+                                    <td>{{ training.start_date|date:"M d" }} - {{ training.end_date|date:"M d, Y" }}</td>
+                                    <td>
+                                        <span class="badge
+                                            {% if training.status == 'completed' %}bg-success
+                                            {% elif training.status == 'in_progress' %}bg-warning
+                                            {% elif training.status == 'cancelled' %}bg-danger
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ training.status|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if training.score %}
+                                            <span class="badge bg-success">{{ training.score|floatformat:1 }}%</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if training.certificate %}
+                                            <a href="{{ training.certificate.url }}" class="btn btn-sm btn-outline-success" target="_blank">
+                                                <i class="fas fa-certificate"></i>
+                                            </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center">No training records found for this employee.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+

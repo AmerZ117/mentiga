@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Mentiga Corporation Berhad - Performance Management System{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --mentiga-green: #2E7D32;
+            --mentiga-dark-green: #1B5E20;
+            --mentiga-light-green: #A5D6A7;
+            --mentiga-blue: #1565C0;
+            --mentiga-dark-blue: #0D47A1;
+            --mentiga-gray: #424242;
+            --mentiga-light-gray: #757575;
+        }
+        
+        body {
+            font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #FAFAFA;
+            color: #212121;
+            line-height: 1.6;
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--mentiga-green) !important;
+            font-size: 1.6rem;
+            font-family: 'Roboto', 'Segoe UI', sans-serif;
+            font-style: italic;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-decoration: none;
+        }
+        
+        .navbar {
+            background-color: white !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            border-bottom: 1px solid #E0E0E0;
+        }
+        
+        .nav-link {
+            color: var(--mentiga-gray) !important;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.2s ease;
+            padding: 0.75rem 1rem !important;
+        }
+        
+        .nav-link:hover {
+            color: var(--mentiga-green) !important;
+            background-color: rgba(46, 125, 50, 0.05);
+        }
+        
+        .btn-primary {
+            background-color: var(--mentiga-green);
+            border-color: var(--mentiga-green);
+            font-weight: 500;
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--mentiga-dark-green);
+            border-color: var(--mentiga-dark-green);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .btn-outline-primary {
+            color: var(--mentiga-green);
+            border-color: var(--mentiga-green);
+            font-weight: 500;
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-outline-primary:hover {
+            background-color: var(--mentiga-green);
+            border-color: var(--mentiga-green);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .card {
+            border: 1px solid #E0E0E0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border-radius: 6px;
+            background-color: white;
+        }
+        
+        .card-header {
+            background-color: #F5F5F5;
+            color: var(--mentiga-gray);
+            border-bottom: 1px solid #E0E0E0;
+            border-radius: 6px 6px 0 0 !important;
+            font-weight: 600;
+            font-size: 1rem;
+            padding: 1rem 1.25rem;
+        }
+        
+        .sidebar {
+            background-color: white;
+            min-height: calc(100vh - 76px);
+            box-shadow: 1px 0 3px rgba(0,0,0,0.08);
+            border-right: 1px solid #E0E0E0;
+        }
+        
+        .sidebar .nav-link {
+            color: var(--mentiga-gray);
+            padding: 0.875rem 1.25rem;
+            border-radius: 4px;
+            margin: 0.125rem 0.75rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background-color: var(--mentiga-green);
+            color: white;
+        }
+        
+        .main-content {
+            padding: 20px;
+        }
+        
+        .stats-card {
+            background: white;
+            color: var(--mentiga-gray);
+            border-radius: 6px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #E0E0E0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        
+        .stats-card h3 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--mentiga-green);
+        }
+        
+        .stats-card p {
+            margin: 0;
+            color: var(--mentiga-light-gray);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .table {
+            background-color: white;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #E0E0E0;
+        }
+        
+        .table thead th {
+            background-color: #F5F5F5;
+            color: var(--mentiga-gray);
+            border-bottom: 2px solid #E0E0E0;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 1rem 0.75rem;
+        }
+        
+        .badge-success {
+            background-color: var(--mentiga-green);
+        }
+        
+        .badge-warning {
+            background-color: #FF9800;
+        }
+        
+        .badge-danger {
+            background-color: #F44336;
+        }
+        
+        .form-control {
+            border: 1px solid #E0E0E0;
+            border-radius: 4px;
+            padding: 0.75rem;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+        
+        .form-control:focus {
+            border-color: var(--mentiga-green);
+            box-shadow: 0 0 0 0.2rem rgba(46, 125, 50, 0.15);
+            outline: none;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: var(--mentiga-gray);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .page-header {
+            background-color: white;
+            padding: 1.5rem 2rem;
+            border-radius: 6px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid #E0E0E0;
+        }
+        
+        .page-header h1 {
+            color: var(--mentiga-gray);
+            margin: 0;
+            font-weight: 600;
+            font-size: 1.75rem;
+        }
+        
+        .alert-success {
+            background-color: #E8F5E8;
+            border-color: var(--mentiga-green);
+            color: var(--mentiga-dark-green);
+        }
+        
+        .progress {
+            height: 8px;
+            border-radius: 4px;
+        }
+        
+        .progress-bar {
+            background-color: var(--mentiga-green);
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'KPI:dashboard' %}">
+                MENTIGA
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'KPI:dashboard' %}">
+                            <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-users me-1"></i> Employees
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'KPI:employee_list' %}">All Employees</a></li>
+                            <li><a class="dropdown-item" href="{% url 'KPI:employee_create' %}">Add Employee</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-clipboard-check me-1"></i> Evaluations
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'KPI:evaluation_list' %}">All Evaluations</a></li>
+                            <li><a class="dropdown-item" href="{% url 'KPI:evaluation_create' %}">New Evaluation</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'KPI:goal_list' %}">
+                            <i class="fas fa-bullseye me-1"></i> Goals
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'KPI:training_list' %}">
+                            <i class="fas fa-graduation-cap me-1"></i> Training
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'KPI:reports' %}">
+                            <i class="fas fa-chart-bar me-1"></i> Reports
+                        </a>
+                    </li>
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-1"></i> Admin
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/admin/">Django Admin</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/admin/logout/">Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 sidebar d-none d-md-block">
+                <div class="p-3">
+                    <h6 class="text-muted mb-3 text-uppercase" style="font-size: 0.75rem; letter-spacing: 1px;">KPI MODULES</h6>
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{% url 'KPI:dashboard' %}">
+                            <i class="fas fa-tachometer-alt me-2"></i> Dashboard
+                        </a>
+                        <a class="nav-link" href="{% url 'KPI:employee_list' %}">
+                            <i class="fas fa-users me-2"></i> Employees
+                        </a>
+                        <a class="nav-link" href="{% url 'KPI:evaluation_list' %}">
+                            <i class="fas fa-clipboard-check me-2"></i> Evaluations
+                        </a>
+                        <a class="nav-link" href="{% url 'KPI:goal_list' %}">
+                            <i class="fas fa-bullseye me-2"></i> Goals
+                        </a>
+                        <a class="nav-link" href="{% url 'KPI:training_list' %}">
+                            <i class="fas fa-graduation-cap me-2"></i> Training
+                        </a>
+                        <a class="nav-link" href="{% url 'KPI:reports' %}">
+                            <i class="fas fa-chart-bar me-2"></i> Reports
+                        </a>
+                    </nav>
+                </div>
+            </div>
+            
+            <!-- Main Content Area -->
+            <div class="col-md-10 main-content">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-light border-top mt-5">
+        <div class="container-fluid">
+            <div class="row py-3">
+                <div class="col-md-6">
+                    <small class="text-muted">
+                        © 2024 Mentiga Corporation Berhad. All rights reserved.
+                    </small>
+                </div>
+                <div class="col-md-6 text-end">
+                    <small class="text-muted">
+                        Performance Management System v2.0 | 
+                        <span id="current-time"></span>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Display current time
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('current-time').textContent = timeString;
+        }
+        
+        updateTime();
+        setInterval(updateTime, 1000);
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
