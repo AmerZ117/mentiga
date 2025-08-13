@@ -60,7 +60,8 @@ def set_environment_variables():
     env_vars = {
         'SECRET_KEY': secret_key,
         'DEBUG': 'False',
-        'ALLOWED_HOSTS': 'localhost,127.0.0.1'
+        'ALLOWED_HOSTS': 'localhost,127.0.0.1,mentigaeva.up.railway.app',
+        'CSRF_TRUSTED_ORIGINS': 'https://mentigaeva.up.railway.app'
     }
     
     for key, value in env_vars.items():
