@@ -1869,7 +1869,7 @@ def generate_leave_pdf(leave_request):
         ]
         
         if leave_request.second_approver:
-            approval_data.append(['Final Approval:', f"{leave_request.second_approver.full_name} ({leave_request.second_approval_date.strftime('%B %d, %Y')})'])
+            approval_data.append(['Final Approval:', f"{leave_request.second_approver.full_name} ({leave_request.second_approval_date.strftime('%B %d, %Y')})"])
         
         approval_table = Table(approval_data, colWidths=[2*inch, 4*inch])
         approval_table.setStyle(TableStyle([
