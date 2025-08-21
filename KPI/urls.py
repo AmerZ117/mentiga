@@ -70,4 +70,12 @@ urlpatterns = [
     path('admin/employee-profiles/', views.admin_employee_profiles, name='admin_employee_profiles'),
     path('admin/employee-profiles/<int:profile_id>/', views.admin_employee_profile_detail, name='admin_employee_profile_detail'),
     path('admin/employee-profiles/<int:profile_id>/edit/', views.admin_employee_profile_edit, name='admin_employee_profile_edit'),
+    
+    # Enhanced Leave Management URLs
+    path('leave-management/', views.leave_management_dashboard, name='leave_management_dashboard'),
+    path('leave-management/requests/', views.leave_requests_list, name='leave_requests_list'),
+    path('leave-management/requests/<int:request_id>/', views.leave_request_detail, name='leave_request_detail'),
+    path('leave-management/requests/<int:request_id>/approve/', views.leave_request_approve, name='leave_request_approve'),
+    path('leave-management/balances/', views.leave_balance_management, name='leave_balance_management'),
+    path('leave-management/requests/<int:request_id>/document/', views.generate_leave_document, name='generate_leave_document'),
 ]

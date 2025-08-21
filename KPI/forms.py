@@ -4,7 +4,8 @@ from .models import (
     Employee, Department, Evaluation, EvaluationDetail, Goal, Training,
     KPICategory, KPI, EvaluationPeriod, Competency, CompetencyAssessment,
     GoalProgress, PerformanceImprovementPlan, EmployeeProfile, EmployeeSelfEvaluation,
-    EmployeeGoalSubmission, EmployeeTrainingRequest, EmployeeLeaveRequest
+    EmployeeGoalSubmission, EmployeeTrainingRequest, EmployeeLeaveRequest,
+    LeaveBalance, LeaveType, LeaveApprovalLevel
 )
 
 class EmployeeForm(forms.ModelForm):
@@ -313,21 +314,130 @@ class EmployeeTrainingRequestForm(forms.ModelForm):
         }
 
 class EmployeeLeaveRequestForm(forms.ModelForm):
-    """Form for employee leave requests"""
+    """Enhanced form for employee leave requests"""
     class Meta:
         model = EmployeeLeaveRequest
         fields = [
-            'leave_type', 'start_date', 'end_date', 'total_days', 'reason',
-            'contact_during_leave', 'contact_phone'
+            'leave_type', 'leave_type_other', 'start_date', 'end_date', 'total_days',
+            'reason', 'contact_during_leave', 'contact_phone', 'contact_email',
+            'is_half_day', 'half_day_type', 'attachments', 'notes'
         ]
         widgets = {
-            'leave_type': forms.Select(attrs={'class': 'form-select'}),
+            'leave_type': forms.Select(attrs={'class': 'form-select', 'id': 'leave_type_select'}),
+            'leave_type_other': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Specify leave type...'}),
             'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'total_days': forms.NumberInput(attrs={'min': '0.5', 'step': '0.5', 'placeholder': 'Total days requested'}),
-            'reason': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Reason for leave request...'}),
-            'contact_during_leave': forms.TextInput(attrs={'placeholder': 'Emergency contact person during leave'}),
-            'contact_phone': forms.TextInput(attrs={'placeholder': 'Emergency contact phone number'}),
+            'total_days': forms.NumberInput(attrs={'min': '0.5', 'step': '0.5', 'class': 'form-control', 'placeholder': 'Total days requested'}),
+            'reason': forms.Textarea(attrs={'rows': 4, 'class': 'form-control', 'placeholder': 'Reason for leave request...'}),
+            'contact_during_leave': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Emergency contact person during leave'}),
+            'contact_phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Emergency contact phone number'}),
+            'contact_email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Emergency contact email'}),
+            'is_half_day': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'half_day_type': forms.Select(attrs={'class': 'form-select'}),
+            'attachments': forms.FileInput(attrs={'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Additional notes...'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make leave_type_other required only when leave_type is not selected
+        self.fields['leave_type_other'].required = False
+        self.fields['half_day_type'].required = False
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        leave_type = cleaned_data.get('leave_type')
+        leave_type_other = cleaned_data.get('leave_type_other')
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+        is_half_day = cleaned_data.get('is_half_day')
+        half_day_type = cleaned_data.get('half_day_type')
+        
+        # Validate leave type
+        if not leave_type and not leave_type_other:
+            raise forms.ValidationError("Please select a leave type or specify a custom type.")
+        
+        # Validate dates
+        if start_date and end_date:
+            if start_date > end_date:
+                raise forms.ValidationError("Start date cannot be after end date.")
+            
+            from datetime import date
+            if start_date < date.today():
+                raise forms.ValidationError("Start date cannot be in the past.")
+        
+        # Validate half-day fields
+        if is_half_day and not half_day_type:
+            raise forms.ValidationError("Please specify whether it's a morning or afternoon half-day.")
+        
+        return cleaned_data
+
+class LeaveApprovalForm(forms.ModelForm):
+    """Form for managers/HR to approve/reject leave requests"""
+    APPROVAL_CHOICES = [
+        ('approve', 'Approve'),
+        ('reject', 'Reject'),
+        ('request_changes', 'Request Changes'),
+    ]
+    
+    action = forms.ChoiceField(choices=APPROVAL_CHOICES, widget=forms.RadioSelect(attrs={'class': 'form-check-input'}))
+    comments = forms.CharField(widget=forms.Textarea(attrs={'rows': 4, 'class': 'form-control', 'placeholder': 'Add your comments...'}), required=False)
+    
+    class Meta:
+        model = EmployeeLeaveRequest
+        fields = []  # No model fields, just custom fields
+    
+    def __init__(self, *args, **kwargs):
+        self.approval_level = kwargs.pop('approval_level', 1)
+        super().__init__(*args, **kwargs)
+        
+        if self.approval_level == 1:
+            self.fields['action'].choices = [
+                ('approve', 'Approve (First Level)'),
+                ('reject', 'Reject'),
+                ('request_changes', 'Request Changes'),
+            ]
+        else:
+            self.fields['action'].choices = [
+                ('approve', 'Approve (Final)'),
+                ('reject', 'Reject'),
+                ('request_changes', 'Request Changes'),
+            ]
+
+class LeaveBalanceForm(forms.ModelForm):
+    """Form for HR to manage employee leave balances"""
+    class Meta:
+        model = LeaveBalance
+        fields = ['allocated_days', 'carried_over_days', 'notes']
+        widgets = {
+            'allocated_days': forms.NumberInput(attrs={'min': '0', 'step': '0.5', 'class': 'form-control'}),
+            'carried_over_days': forms.NumberInput(attrs={'min': '0', 'step': '0.5', 'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Notes about this leave balance...'}),
+        }
+
+class LeaveTypeForm(forms.ModelForm):
+    """Form for managing leave types"""
+    class Meta:
+        model = LeaveType
+        fields = ['name', 'description', 'default_allocation', 'requires_approval', 'color']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'default_allocation': forms.NumberInput(attrs={'min': '0', 'step': '0.5', 'class': 'form-control'}),
+            'requires_approval': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'color': forms.TextInput(attrs={'type': 'color', 'class': 'form-control form-control-color'}),
+        }
+
+class LeaveApprovalLevelForm(forms.ModelForm):
+    """Form for managing approval levels"""
+    class Meta:
+        model = LeaveApprovalLevel
+        fields = ['level', 'department', 'approver_role', 'is_active']
+        widgets = {
+            'level': forms.Select(attrs={'class': 'form-select'}),
+            'department': forms.Select(attrs={'class': 'form-select'}),
+            'approver_role': forms.TextInput(attrs={'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 class EmployeeLoginForm(forms.Form):

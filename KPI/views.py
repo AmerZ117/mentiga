@@ -14,7 +14,8 @@ from .models import (
     KPICategory, KPI, EvaluationPeriod, Competency, CompetencyAssessment,
     GoalProgress, Report, PerformanceImprovementPlan, Notification,
     EmployeeProfile, EmployeeSelfEvaluation, EmployeeGoalSubmission,
-    EmployeeTrainingRequest, EmployeeLeaveRequest
+    EmployeeTrainingRequest, EmployeeLeaveRequest, LeaveType, LeaveApprovalLevel,
+    LeaveBalance, LeaveRequestDocument
 )
 from .forms import (
     EmployeeForm, EvaluationForm, EvaluationDetailFormSet, GoalForm,
@@ -22,7 +23,7 @@ from .forms import (
     CompetencyForm, CompetencyAssessmentForm, GoalProgressForm,
     EmployeeProfileForm, EmployeeSelfEvaluationForm, EmployeeGoalSubmissionForm,
     EmployeeTrainingRequestForm, EmployeeLeaveRequestForm, EmployeeLoginForm,
-    EmployeePasswordChangeForm
+    EmployeePasswordChangeForm, LeaveApprovalForm
 )
 from .report_utils import ReportGenerator, generate_report_response
 
@@ -1447,3 +1448,501 @@ def admin_employee_profile_edit(request, profile_id):
     }
     
     return render(request, 'KPI/admin_employee_profile_form.html', context)
+
+# Enhanced Leave Management Views
+@login_required
+def leave_management_dashboard(request):
+    """HR dashboard for leave management"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied. HR access required.')
+        return redirect('KPI:dashboard')
+    
+    # Get current year
+    current_year = timezone.now().year
+    
+    # Leave statistics
+    total_leave_requests = EmployeeLeaveRequest.objects.filter(
+        submitted_at__year=current_year
+    ).count()
+    
+    pending_approvals = EmployeeLeaveRequest.objects.filter(
+        status__in=['submitted', 'first_approval_pending', 'first_approved', 'second_approval_pending']
+    ).count()
+    
+    approved_leaves = EmployeeLeaveRequest.objects.filter(
+        status='approved',
+        submitted_at__year=current_year
+    ).count()
+    
+    rejected_leaves = EmployeeLeaveRequest.objects.filter(
+        status='rejected',
+        submitted_at__year=current_year
+    ).count()
+    
+    # Department-wise leave requests
+    department_leaves = Department.objects.annotate(
+        leave_count=Count('employee__leave_requests', filter=Q(
+            employee__leave_requests__submitted_at__year=current_year
+        ))
+    ).order_by('-leave_count')
+    
+    # Recent leave requests
+    recent_requests = EmployeeLeaveRequest.objects.select_related(
+        'employee', 'employee__department', 'leave_type'
+    ).order_by('-submitted_at')[:10]
+    
+    context = {
+        'total_leave_requests': total_leave_requests,
+        'pending_approvals': pending_approvals,
+        'approved_leaves': approved_leaves,
+        'rejected_leaves': rejected_leaves,
+        'department_leaves': department_leaves,
+        'recent_requests': recent_requests,
+        'current_year': current_year,
+    }
+    
+    return render(request, 'KPI/leave_management_dashboard.html', context)
+
+@login_required
+def leave_requests_list(request):
+    """List all leave requests for HR/Managers"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied. HR access required.')
+        return redirect('KPI:dashboard')
+    
+    # Get filter parameters
+    status_filter = request.GET.get('status', '')
+    department_filter = request.GET.get('department', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    
+    # Base queryset
+    leave_requests = EmployeeLeaveRequest.objects.select_related(
+        'employee', 'employee__department', 'leave_type'
+    ).order_by('-submitted_at')
+    
+    # Apply filters
+    if status_filter:
+        leave_requests = leave_requests.filter(status=status_filter)
+    
+    if department_filter:
+        leave_requests = leave_requests.filter(employee__department_id=department_filter)
+    
+    if date_from:
+        leave_requests = leave_requests.filter(start_date__gte=date_from)
+    
+    if date_to:
+        leave_requests = leave_requests.filter(end_date__lte=date_to)
+    
+    # Pagination
+    paginator = Paginator(leave_requests, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Get departments for filter
+    departments = Department.objects.all()
+    
+    context = {
+        'page_obj': page_obj,
+        'departments': departments,
+        'status_filter': status_filter,
+        'department_filter': department_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+    }
+    
+    return render(request, 'KPI/leave_requests_list.html', context)
+
+@login_required
+def leave_request_detail(request, request_id):
+    """Detailed view of a leave request"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied. HR access required.')
+        return redirect('KPI:dashboard')
+    
+    leave_request = get_object_or_404(
+        EmployeeLeaveRequest.objects.select_related(
+            'employee', 'employee__department', 'leave_type',
+            'first_approver', 'second_approver', 'rejected_by'
+        ),
+        id=request_id
+    )
+    
+    # Check if user can approve this request
+    can_approve = False
+    approval_level = None
+    
+    if request.user.employee:
+        user_dept = request.user.employee.department
+        if leave_request.status == 'submitted':
+            # First level approval
+            approval_level = 1
+            can_approve = LeaveApprovalLevel.objects.filter(
+                level=1, department=user_dept, is_active=True
+            ).exists()
+        elif leave_request.status == 'first_approved':
+            # Second level approval
+            approval_level = 2
+            can_approve = LeaveApprovalLevel.objects.filter(
+                level=2, department=user_dept, is_active=True
+            ).exists()
+    
+    # Approval form
+    approval_form = None
+    if can_approve:
+        approval_form = LeaveApprovalForm(approval_level=approval_level)
+    
+    context = {
+        'leave_request': leave_request,
+        'can_approve': can_approve,
+        'approval_level': approval_level,
+        'approval_form': approval_form,
+    }
+    
+    return render(request, 'KPI/leave_request_detail.html', context)
+
+@login_required
+def leave_request_approve(request, request_id):
+    """Approve/reject leave request"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied. HR access required.')
+        return redirect('KPI:dashboard')
+    
+    leave_request = get_object_or_404(EmployeeLeaveRequest, id=request_id)
+    
+    if request.method == 'POST':
+        form = LeaveApprovalForm(request.POST, approval_level=request.POST.get('approval_level', 1))
+        if form.is_valid():
+            action = form.cleaned_data['action']
+            comments = form.cleaned_data['comments']
+            approval_level = int(request.POST.get('approval_level', 1))
+            
+            if action == 'approve':
+                if approval_level == 1:
+                    # First level approval
+                    leave_request.status = 'first_approved'
+                    leave_request.first_approver = request.user.employee
+                    leave_request.first_approval_date = timezone.now()
+                    leave_request.first_approval_comments = comments
+                    
+                    # Check if second approval is needed
+                    if LeaveApprovalLevel.objects.filter(level=2, is_active=True).exists():
+                        leave_request.status = 'second_approval_pending'
+                    else:
+                        leave_request.status = 'approved'
+                        leave_request.second_approver = request.user.employee
+                        leave_request.second_approval_date = timezone.now()
+                        leave_request.second_approval_comments = comments
+                    
+                    messages.success(request, 'Leave request approved at first level.')
+                    
+                elif approval_level == 2:
+                    # Final approval
+                    leave_request.status = 'approved'
+                    leave_request.second_approver = request.user.employee
+                    leave_request.second_approval_date = timezone.now()
+                    leave_request.second_approval_comments = comments
+                    
+                    messages.success(request, 'Leave request approved!')
+                    
+            elif action == 'reject':
+                leave_request.status = 'rejected'
+                leave_request.rejected_by = request.user.employee
+                leave_request.rejection_date = timezone.now()
+                leave_request.rejection_reason = comments
+                
+                messages.success(request, 'Leave request rejected.')
+                
+            elif action == 'request_changes':
+                leave_request.status = 'draft'
+                messages.success(request, 'Changes requested for leave request.')
+            
+            leave_request.save()
+            
+            # Send notification to employee
+            # TODO: Implement notification system
+            
+            return redirect('KPI:leave_request_detail', request_id=request_id)
+    
+    return redirect('KPI:leave_request_detail', request_id=request_id)
+
+@login_required
+def leave_balance_management(request):
+    """HR view for managing employee leave balances"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied. HR access required.')
+        return redirect('KPI:dashboard')
+    
+    current_year = timezone.now().year
+    
+    # Get all employees with their leave balances
+    employees = Employee.objects.filter(status='active').select_related('department')
+    
+    # Get leave types
+    leave_types = LeaveType.objects.filter(is_active=True)
+    
+    if request.method == 'POST':
+        # Handle bulk update
+        for employee in employees:
+            for leave_type in leave_types:
+                allocated_key = f'allocated_{employee.id}_{leave_type.id}'
+                carried_key = f'carried_{employee.id}_{leave_type.id}'
+                
+                if allocated_key in request.POST:
+                    allocated_days = request.POST.get(allocated_key)
+                    carried_days = request.POST.get(carried_key, 0)
+                    
+                    if allocated_days:
+                        balance, created = LeaveBalance.objects.get_or_create(
+                            employee=employee,
+                            leave_type=leave_type,
+                            year=current_year,
+                            defaults={'allocated_days': 0, 'carried_over_days': 0}
+                        )
+                        balance.allocated_days = allocated_days
+                        balance.carried_over_days = carried_days
+                        balance.save()
+        
+        messages.success(request, 'Leave balances updated successfully!')
+        return redirect('KPI:leave_balance_management')
+    
+    # Get current balances
+    balances = {}
+    for employee in employees:
+        balances[employee.id] = {}
+        for leave_type in leave_types:
+            balance = LeaveBalance.objects.filter(
+                employee=employee,
+                leave_type=leave_type,
+                year=current_year
+            ).first()
+            
+            balances[employee.id][leave_type.id] = {
+                'allocated': balance.allocated_days if balance else 0,
+                'used': balance.used_days if balance else 0,
+                'pending': balance.pending_days if balance else 0,
+                'remaining': balance.remaining_days if balance else 0,
+                'carried': balance.carried_over_days if balance else 0,
+            }
+    
+    context = {
+        'employees': employees,
+        'leave_types': leave_types,
+        'balances': balances,
+        'current_year': current_year,
+    }
+    
+    return render(request, 'KPI/leave_balance_management.html', context)
+
+@login_required
+def generate_leave_document(request, request_id):
+    """Generate PDF/Word document for approved leave request"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied. HR access required.')
+        return redirect('KPI:dashboard')
+    
+    leave_request = get_object_or_404(
+        EmployeeLeaveRequest.objects.select_related(
+            'employee', 'employee__department', 'leave_type'
+        ),
+        id=request_id
+    )
+    
+    if leave_request.status != 'approved':
+        messages.error(request, 'Can only generate documents for approved leave requests.')
+        return redirect('KPI:leave_request_detail', request_id=request_id)
+    
+    document_type = request.GET.get('format', 'pdf')
+    
+    try:
+        # Generate document
+        if document_type == 'pdf':
+            response = generate_leave_pdf(leave_request)
+        else:
+            response = generate_leave_docx(leave_request)
+        
+        # Save document record
+        document, created = LeaveRequestDocument.objects.get_or_create(
+            leave_request=leave_request,
+            defaults={
+                'document_type': document_type,
+                'file_path': f'leave_documents/{leave_request.id}_{document_type}.{document_type}',
+                'generated_by': request.user
+            }
+        )
+        
+        return response
+        
+    except Exception as e:
+        messages.error(request, f'Error generating document: {str(e)}')
+        return redirect('KPI:leave_request_detail', request_id=request_id)
+
+def generate_leave_pdf(leave_request):
+    """Generate PDF document for leave request"""
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.lib import colors
+    from io import BytesIO
+    
+    # Create the HttpResponse object with PDF headers
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="leave_request_{leave_request.id}.pdf"'
+    
+    # Create the PDF object
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    elements = []
+    
+    # Get styles
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        spaceAfter=30,
+        alignment=1  # Center alignment
+    )
+    
+    # Add content
+    elements.append(Paragraph("LEAVE APPROVAL DOCUMENT", title_style))
+    elements.append(Spacer(1, 20))
+    
+    # Employee information
+    employee_data = [
+        ['Employee Name:', leave_request.employee.full_name],
+        ['Employee ID:', leave_request.employee.employee_id],
+        ['Department:', leave_request.employee.department.name],
+        ['Position:', leave_request.employee.position],
+    ]
+    
+    employee_table = Table(employee_data, colWidths=[2*inch, 4*inch])
+    employee_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.grey),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ('BACKGROUND', (1, 0), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    
+    elements.append(employee_table)
+    elements.append(Spacer(1, 20))
+    
+    # Leave details
+    leave_data = [
+        ['Leave Type:', leave_request.leave_type_display],
+        ['Start Date:', leave_request.start_date.strftime('%B %d, %Y')],
+        ['End Date:', leave_request.end_date.strftime('%B %d, %Y')],
+        ['Total Days:', str(leave_request.total_days)],
+        ['Reason:', leave_request.reason],
+    ]
+    
+    if leave_request.is_half_day:
+        leave_data.append(['Half Day:', leave_request.half_day_type.title()])
+    
+    leave_table = Table(leave_data, colWidths=[2*inch, 4*inch])
+    leave_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.grey),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ('BACKGROUND', (1, 0), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    
+    elements.append(leave_table)
+    elements.append(Spacer(1, 20))
+    
+    # Approval information
+    if leave_request.first_approver:
+        elements.append(Paragraph("APPROVAL INFORMATION", styles['Heading2']))
+        elements.append(Spacer(1, 10))
+        
+        approval_data = [
+            ['First Level Approval:', f"{leave_request.first_approver.full_name} ({leave_request.first_approval_date.strftime('%B %d, %Y')})"],
+        ]
+        
+        if leave_request.second_approver:
+            approval_data.append(['Final Approval:', f"{leave_request.second_approver.full_name} ({leave_request.second_approval_date.strftime('%B %d, %Y')})'])
+        
+        approval_table = Table(approval_data, colWidths=[2*inch, 4*inch])
+        approval_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.grey),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('BACKGROUND', (1, 0), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        
+        elements.append(approval_table)
+    
+    # Build PDF
+    doc.build(elements)
+    pdf = buffer.getvalue()
+    buffer.close()
+    
+    response.write(pdf)
+    return response
+
+def generate_leave_docx(leave_request):
+    """Generate Word document for leave request"""
+    from docx import Document
+    from docx.shared import Inches
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from io import BytesIO
+    
+    # Create the HttpResponse object with Word headers
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    response['Content-Disposition'] = f'attachment; filename="leave_request_{leave_request.id}.docx"'
+    
+    # Create document
+    doc = Document()
+    
+    # Add title
+    title = doc.add_heading('LEAVE APPROVAL DOCUMENT', 0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Add employee information
+    doc.add_heading('Employee Information', level=1)
+    doc.add_paragraph(f'Employee Name: {leave_request.employee.full_name}')
+    doc.add_paragraph(f'Employee ID: {leave_request.employee.employee_id}')
+    doc.add_paragraph(f'Department: {leave_request.employee.department.name}')
+    doc.add_paragraph(f'Position: {leave_request.employee.position}')
+    
+    # Add leave details
+    doc.add_heading('Leave Details', level=1)
+    doc.add_paragraph(f'Leave Type: {leave_request.leave_type_display}')
+    doc.add_paragraph(f'Start Date: {leave_request.start_date.strftime("%B %d, %Y")}')
+    doc.add_paragraph(f'End Date: {leave_request.end_date.strftime("%B %d, %Y")}')
+    doc.add_paragraph(f'Total Days: {leave_request.total_days}')
+    doc.add_paragraph(f'Reason: {leave_request.reason}')
+    
+    if leave_request.is_half_day:
+        doc.add_paragraph(f'Half Day: {leave_request.half_day_type.title()}')
+    
+    # Add approval information
+    if leave_request.first_approver:
+        doc.add_heading('Approval Information', level=1)
+        doc.add_paragraph(f'First Level Approval: {leave_request.first_approver.full_name} ({leave_request.first_approval_date.strftime("%B %d, %Y")})')
+        
+        if leave_request.second_approver:
+            doc.add_paragraph(f'Final Approval: {leave_request.second_approver.full_name} ({leave_request.second_approval_date.strftime("%B %d, %Y")})')
+    
+    # Save to buffer
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    
+    response.write(buffer.getvalue())
+    buffer.close()
+    
+    return response

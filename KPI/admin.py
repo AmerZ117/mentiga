@@ -12,8 +12,10 @@ from .models import (
     Evaluation, EvaluationDetail, Goal, Training, Competency,
     CompetencyAssessment, GoalProgress, Report, PerformanceImprovementPlan,
     Notification, EmployeeProfile, EmployeeSelfEvaluation, EmployeeGoalSubmission,
-    EmployeeTrainingRequest, EmployeeLeaveRequest
+    EmployeeTrainingRequest, EmployeeLeaveRequest, LeaveType, LeaveBalance,
+    LeaveApprovalLevel, LeaveRequestDocument
 )
+from django.utils import timezone
 
 @admin.register(Department)
 class DepartmentAdmin(admin.ModelAdmin):
@@ -528,23 +530,201 @@ class EmployeeTrainingRequestAdmin(admin.ModelAdmin):
         }),
     )
 
+@admin.register(LeaveType)
+class LeaveTypeAdmin(admin.ModelAdmin):
+    list_display = ['name', 'default_allocation', 'requires_approval', 'is_active', 'color_display']
+    list_filter = ['requires_approval', 'is_active']
+    search_fields = ['name', 'description']
+    ordering = ['name']
+    list_editable = ['is_active', 'requires_approval']
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'description', 'color')
+        }),
+        ('Configuration', {
+            'fields': ('default_allocation', 'requires_approval', 'is_active')
+        }),
+    )
+    
+    def color_display(self, obj):
+        return format_html(
+            '<div style="width: 30px; height: 20px; background-color: {}; border: 1px solid #ccc; border-radius: 3px;"></div>',
+            obj.color
+        )
+    color_display.short_description = 'Color'
+
+@admin.register(LeaveBalance)
+class LeaveBalanceAdmin(admin.ModelAdmin):
+    list_display = ['employee', 'leave_type', 'year', 'allocated_days', 'used_days', 'pending_days', 'remaining_days', 'carried_over_days']
+    list_filter = ['year', 'leave_type', 'employee__department']
+    search_fields = ['employee__first_name', 'employee__last_name', 'employee__employee_id']
+    ordering = ['-year', 'employee__first_name', 'leave_type__name']
+    
+    fieldsets = (
+        ('Employee Information', {
+            'fields': ('employee', 'leave_type', 'year')
+        }),
+        ('Leave Allocation', {
+            'fields': ('allocated_days', 'carried_over_days')
+        }),
+        ('Usage Tracking', {
+            'fields': ('used_days', 'pending_days'),
+            'description': 'These fields are automatically calculated based on leave requests'
+        }),
+    )
+    
+    readonly_fields = ['used_days', 'pending_days']
+    
+    def remaining_days(self, obj):
+        return obj.remaining_days
+    remaining_days.short_description = 'Remaining Days'
+
+@admin.register(LeaveApprovalLevel)
+class LeaveApprovalLevelAdmin(admin.ModelAdmin):
+    list_display = ['level', 'department', 'approver_role', 'is_active']
+    list_filter = ['level', 'is_active', 'department']
+    search_fields = ['department__name', 'approver_role']
+    ordering = ['level', 'department__name']
+    list_editable = ['is_active']
+    
+    fieldsets = (
+        ('Approval Configuration', {
+            'fields': ('level', 'department', 'approver_role')
+        }),
+        ('Status', {
+            'fields': ('is_active',)
+        }),
+    )
+
 @admin.register(EmployeeLeaveRequest)
 class EmployeeLeaveRequestAdmin(admin.ModelAdmin):
-    list_display = ['employee', 'leave_type', 'start_date', 'end_date', 'total_days', 'status']
-    list_filter = ['status', 'leave_type', 'start_date', 'employee__department']
-    search_fields = ['employee__first_name', 'employee__last_name', 'reason']
-    readonly_fields = ['submitted_at']
+    list_display = ['employee', 'leave_type_display', 'start_date', 'end_date', 'total_days', 'status', 'submitted_at', 'approval_progress_display']
+    list_filter = ['status', 'leave_type', 'start_date', 'submitted_at', 'employee__department']
+    search_fields = ['employee__first_name', 'employee__last_name', 'employee__employee_id']
+    ordering = ['-submitted_at']
+    readonly_fields = ['submitted_at', 'created_at', 'updated_at', 'approval_progress']
+    
     fieldsets = (
-        ('Leave Information', {
-            'fields': ('employee', 'leave_type', 'start_date', 'end_date', 'total_days')
+        ('Employee Information', {
+            'fields': ('employee', 'leave_type', 'leave_type_other')
         }),
-        ('Details', {
-            'fields': ('reason', 'contact_during_leave', 'contact_phone')
+        ('Leave Details', {
+            'fields': ('start_date', 'end_date', 'total_days', 'is_half_day', 'half_day_type')
         }),
-        ('Review', {
-            'fields': ('status', 'reviewed_by', 'review_date', 'review_comments', 'approved_date', 'rejection_reason')
+        ('Request Information', {
+            'fields': ('reason', 'notes', 'attachments')
         }),
-        ('Timestamps', {
-            'fields': ('submitted_at',)
+        ('Emergency Contact', {
+            'fields': ('contact_during_leave', 'contact_phone', 'contact_email')
+        }),
+        ('Approval Workflow', {
+            'fields': ('status', 'first_approver', 'first_approval_date', 'first_approval_comments'),
+            'description': 'First level approval details'
+        }),
+        ('Final Approval', {
+            'fields': ('second_approver', 'second_approval_date', 'second_approval_comments'),
+            'description': 'Second level approval details'
+        }),
+        ('Rejection Details', {
+            'fields': ('rejected_by', 'rejection_date', 'rejection_reason'),
+            'description': 'Only filled if request is rejected'
+        }),
+        ('System Information', {
+            'fields': ('submitted_at', 'created_at', 'updated_at')
+        }),
+    )
+    
+    actions = ['approve_requests', 'reject_requests', 'reset_to_draft']
+    
+    def leave_type_display(self, obj):
+        return obj.leave_type_display
+    leave_type_display.short_description = 'Leave Type'
+    
+    def approval_progress_display(self, obj):
+        progress = obj.approval_progress
+        if progress == 100:
+            color = '#28a745'
+            icon = '✓'
+        elif progress > 0:
+            color = '#ffc107'
+            icon = '⏳'
+        else:
+            color = '#6c757d'
+            icon = '⏸'
+        
+        return format_html(
+            '<div style="display: flex; align-items: center; gap: 5px;">'
+            '<span style="color: {};">{}</span>'
+            '<div style="width: 60px; height: 8px; background: #e9ecef; border-radius: 4px;">'
+            '<div style="width: {}%; height: 100%; background: {}; border-radius: 4px;"></div>'
+            '</div>'
+            '<span style="font-size: 12px; color: #6c757d;">{}%</span>'
+            '</div>',
+            color, icon, progress, color, progress
+        )
+    approval_progress_display.short_description = 'Progress'
+    
+    def approve_requests(self, request, queryset):
+        approved_count = 0
+        for leave_request in queryset:
+            if leave_request.status in ['submitted', 'first_approval_pending']:
+                leave_request.status = 'first_approved'
+                leave_request.first_approver = request.user.employee if hasattr(request.user, 'employee') else None
+                leave_request.first_approval_date = timezone.now()
+                leave_request.save()
+                approved_count += 1
+        
+        if approved_count > 0:
+            self.message_user(request, f'Successfully approved {approved_count} leave request(s).')
+        else:
+            self.message_user(request, 'No requests were eligible for approval.')
+    approve_requests.short_description = 'Approve selected requests (First Level)'
+    
+    def reject_requests(self, request, queryset):
+        rejected_count = 0
+        for leave_request in queryset:
+            if leave_request.status in ['submitted', 'first_approval_pending', 'first_approved', 'second_approval_pending']:
+                leave_request.status = 'rejected'
+                leave_request.rejected_by = request.user.employee if hasattr(request.user, 'employee') else None
+                leave_request.rejection_date = timezone.now()
+                leave_request.rejection_reason = 'Bulk rejection from admin'
+                leave_request.save()
+                rejected_count += 1
+        
+        if rejected_count > 0:
+            self.message_user(request, f'Successfully rejected {rejected_count} leave request(s).')
+        else:
+            self.message_user(request, 'No requests were eligible for rejection.')
+    reject_requests.short_description = 'Reject selected requests'
+    
+    def reset_to_draft(self, request, queryset):
+        reset_count = 0
+        for leave_request in queryset:
+            if leave_request.status != 'approved':
+                leave_request.status = 'draft'
+                leave_request.save()
+                reset_count += 1
+        
+        if reset_count > 0:
+            self.message_user(request, f'Successfully reset {reset_count} leave request(s) to draft.')
+        else:
+            self.message_user(request, 'No requests were eligible for reset.')
+    reset_to_draft.short_description = 'Reset to draft'
+
+@admin.register(LeaveRequestDocument)
+class LeaveRequestDocumentAdmin(admin.ModelAdmin):
+    list_display = ['leave_request', 'document_type', 'generated_at', 'generated_by']
+    list_filter = ['document_type', 'generated_at']
+    search_fields = ['leave_request__employee__first_name', 'leave_request__employee__last_name']
+    ordering = ['-generated_at']
+    readonly_fields = ['generated_at', 'generated_by']
+    
+    fieldsets = (
+        ('Document Information', {
+            'fields': ('leave_request', 'document_type', 'file_path')
+        }),
+        ('Generation Details', {
+            'fields': ('generated_at', 'generated_by')
         }),
     )

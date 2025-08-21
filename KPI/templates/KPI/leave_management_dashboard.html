@@ -1,0 +1,192 @@
+{% extends 'KPI/base.html' %}
+{% load static %}
+
+{% block title %}Leave Management Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .stats-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    
+    .stats-label {
+        font-size: 1rem;
+        opacity: 0.9;
+    }
+    
+    .recent-requests {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .request-item {
+        border-left: 4px solid #007bff;
+        padding: 15px;
+        margin-bottom: 15px;
+        background: #f8f9fa;
+        border-radius: 5px;
+    }
+    
+    .status-badge {
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+    
+    .status-pending { background: #fff3cd; color: #856404; }
+    .status-approved { background: #d4edda; color: #155724; }
+    .status-rejected { background: #f8d7da; color: #721c24; }
+    
+    .department-chart {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Leave Management Dashboard</h1>
+                <div>
+                    <a href="{% url 'KPI:leave_requests_list' %}" class="btn btn-primary">
+                        <i class="fas fa-list"></i> View All Requests
+                    </a>
+                    <a href="{% url 'KPI:leave_balance_management' %}" class="btn btn-success">
+                        <i class="fas fa-balance-scale"></i> Manage Leave Balances
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-number">{{ total_leave_requests }}</div>
+                <div class="stats-label">Total Leave Requests ({{ current_year }})</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="stats-number">{{ pending_approvals }}</div>
+                <div class="stats-label">Pending Approvals</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="stats-number">{{ approved_leaves }}</div>
+                <div class="stats-label">Approved Leaves ({{ current_year }})</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                <div class="stats-number">{{ rejected_leaves }}</div>
+                <div class="stats-label">Rejected Leaves ({{ current_year }})</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Leave Requests -->
+        <div class="col-xl-8">
+            <div class="recent-requests">
+                <h4 class="mb-3">
+                    <i class="fas fa-clock"></i> Recent Leave Requests
+                </h4>
+                {% if recent_requests %}
+                    {% for request in recent_requests %}
+                    <div class="request-item">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                <strong>{{ request.employee.full_name }}</strong>
+                                <br>
+                                <small class="text-muted">{{ request.employee.department.name }}</small>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>{{ request.leave_type_display }}</strong>
+                                <br>
+                                <small class="text-muted">{{ request.total_days }} days</small>
+                            </div>
+                            <div class="col-md-3">
+                                <span class="status-badge 
+                                    {% if request.status == 'approved' %}status-approved
+                                    {% elif request.status == 'rejected' %}status-rejected
+                                    {% else %}status-pending{% endif %}">
+                                    {{ request.get_status_display }}
+                                </span>
+                                <br>
+                                <small class="text-muted">{{ request.submitted_at|date:"M d, Y" }}</small>
+                            </div>
+                            <div class="col-md-3 text-end">
+                                <a href="{% url 'KPI:leave_request_detail' request.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>No leave requests found.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Department Statistics -->
+        <div class="col-xl-4">
+            <div class="department-chart">
+                <h4 class="mb-3">
+                    <i class="fas fa-chart-pie"></i> Department Leave Requests
+                </h4>
+                {% if department_leaves %}
+                    {% for dept in department_leaves %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>{{ dept.name }}</span>
+                        <span class="badge bg-primary">{{ dept.leave_count }}</span>
+                    </div>
+                    <div class="progress mb-3" style="height: 8px;">
+                        <div class="progress-bar" role="progressbar" 
+                             style="width: {% widthratio dept.leave_count total_leave_requests 100 %}%"></div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <p>No department data available.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh dashboard every 5 minutes
+    setInterval(function() {
+        location.reload();
+    }, 300000);
+</script>
+{% endblock %}

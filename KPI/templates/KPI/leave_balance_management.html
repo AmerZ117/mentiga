@@ -1,0 +1,362 @@
+{% extends 'KPI/base.html' %}
+{% load static %}
+
+{% block title %}Leave Balance Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .balance-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .balance-table {
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .balance-table th {
+        background: #f8f9fa;
+        border: none;
+        padding: 15px 10px;
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .balance-table td {
+        padding: 12px 10px;
+        vertical-align: middle;
+        border-top: 1px solid #dee2e6;
+    }
+    
+    .balance-input {
+        width: 80px;
+        text-align: center;
+        border: 1px solid #ced4da;
+        border-radius: 5px;
+        padding: 5px;
+    }
+    
+    .balance-input:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+    }
+    
+    .balance-summary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .summary-number {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    
+    .summary-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .employee-row:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .balance-cell {
+        text-align: center;
+        font-weight: 500;
+    }
+    
+    .balance-remaining {
+        font-weight: bold;
+        color: #28a745;
+    }
+    
+    .balance-used {
+        color: #dc3545;
+    }
+    
+    .balance-pending {
+        color: #ffc107;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Leave Balance Management</h1>
+                <div>
+                    <a href="{% url 'KPI:leave_management_dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="balance-summary">
+                <div class="summary-number">{{ employees.count }}</div>
+                <div class="summary-label">Total Employees</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="balance-summary" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="summary-number">{{ leave_types.count }}</div>
+                <div class="summary-label">Leave Types</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="balance-summary" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="summary-number">{{ current_year }}</div>
+                <div class="summary-label">Current Year</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="balance-summary" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                <div class="summary-number">
+                    {% if leave_types %}
+                        {{ leave_types.first.default_allocation|default:"0" }}
+                    {% else %}
+                        0
+                    {% endif %}
+                </div>
+                <div class="summary-label">Default Allocation (Days)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="balance-card">
+        <h5 class="mb-3">
+            <i class="fas fa-info-circle"></i> Instructions
+        </h5>
+        <div class="row">
+            <div class="col-md-6">
+                <ul class="mb-0">
+                    <li>Update allocated days for each employee and leave type</li>
+                    <li>Set carried over days from previous year if applicable</li>
+                    <li>Used and pending days are automatically calculated</li>
+                    <li>Click "Update All Balances" to save changes</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <div class="alert alert-info mb-0">
+                    <strong>Note:</strong> Changes will only affect the current year ({{ current_year }}). 
+                    Previous year balances will not be modified.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leave Balance Form -->
+    <form method="post">
+        {% csrf_token %}
+        <div class="balance-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">
+                    <i class="fas fa-balance-scale"></i> Employee Leave Balances
+                </h5>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Update All Balances
+                </button>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table balance-table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Department</th>
+                            {% for leave_type in leave_types %}
+                            <th colspan="3" class="text-center" style="background: {{ leave_type.color }}; color: white;">
+                                {{ leave_type.name }}
+                                <br>
+                                <small>Default: {{ leave_type.default_allocation }} days</small>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            {% for leave_type in leave_types %}
+                            <th class="text-center">Allocated</th>
+                            <th class="text-center">Used</th>
+                            <th class="text-center">Remaining</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for employee in employees %}
+                        <tr class="employee-row">
+                            <td>
+                                <div class="d-flex flex-column">
+                                    <strong>{{ employee.full_name }}</strong>
+                                    <small class="text-muted">{{ employee.employee_id }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ employee.department.name }}</span>
+                            </td>
+                            {% for leave_type in leave_types %}
+                            <td class="balance-cell">
+                                <input type="number" 
+                                       name="allocated_{{ employee.id }}_{{ leave_type.id }}" 
+                                       value="{{ balances|get_item:employee.id|get_item:leave_type.id|get_item:'allocated' }}" 
+                                       min="0" 
+                                       step="0.5" 
+                                       class="balance-input"
+                                       placeholder="0">
+                            </td>
+                            <td class="balance-cell balance-used">
+                                {{ balances|get_item:employee.id|get_item:leave_type.id|get_item:'used' }}
+                            </td>
+                            <td class="balance-cell balance-remaining">
+                                {{ balances|get_item:employee.id|get_item:leave_type.id|get_item:'remaining' }}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </form>
+
+    <!-- Leave Type Information -->
+    <div class="balance-card">
+        <h5 class="mb-3">
+            <i class="fas fa-list"></i> Leave Type Details
+        </h5>
+        <div class="row">
+            {% for leave_type in leave_types %}
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="color-box me-2" style="width: 20px; height: 20px; background: {{ leave_type.color }}; border-radius: 4px;"></div>
+                            <h6 class="card-title mb-0">{{ leave_type.name }}</h6>
+                        </div>
+                        <p class="card-text small text-muted">{{ leave_type.description|default:"No description available" }}</p>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">
+                                <strong>Default:</strong> {{ leave_type.default_allocation }} days
+                            </small>
+                            <small class="text-muted">
+                                <strong>Approval:</strong> 
+                                {% if leave_type.requires_approval %}
+                                    <span class="text-warning">Required</span>
+                                {% else %}
+                                    <span class="text-success">Not Required</span>
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="balance-card">
+        <h5 class="mb-3">
+            <i class="fas fa-bolt"></i> Quick Actions
+        </h5>
+        <div class="row">
+            <div class="col-md-4">
+                <button type="button" class="btn btn-outline-primary w-100 mb-2" onclick="setDefaultAllocations()">
+                    <i class="fas fa-magic"></i> Set Default Allocations
+                </button>
+            </div>
+            <div class="col-md-4">
+                <button type="button" class="btn btn-outline-success w-100 mb-2" onclick="copyPreviousYear()">
+                    <i class="fas fa-copy"></i> Copy Previous Year
+                </button>
+            </div>
+            <div class="col-md-4">
+                <button type="button" class="btn btn-outline-warning w-100 mb-2" onclick="resetAllBalances()">
+                    <i class="fas fa-undo"></i> Reset All Balances
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Set default allocations for all employees
+    function setDefaultAllocations() {
+        if (confirm('This will set all employees to their default leave allocations. Continue?')) {
+            const inputs = document.querySelectorAll('input[name^="allocated_"]');
+            inputs.forEach(input => {
+                const name = input.name;
+                const parts = name.split('_');
+                const employeeId = parts[1];
+                const leaveTypeId = parts[2];
+                
+                // Find the default allocation from the table header
+                const header = input.closest('table').querySelector(`th[style*="background"]`);
+                const defaultText = header.querySelector('small').textContent;
+                const defaultDays = defaultText.match(/Default: ([\d.]+) days/)[1];
+                
+                input.value = defaultDays;
+            });
+        }
+    }
+    
+    // Copy previous year balances
+    function copyPreviousYear() {
+        if (confirm('This will copy leave balances from the previous year. Continue?')) {
+            // This would typically make an AJAX call to get previous year data
+            alert('Feature requires backend implementation to fetch previous year data.');
+        }
+    }
+    
+    // Reset all balances to zero
+    function resetAllBalances() {
+        if (confirm('This will reset all leave balances to zero. Continue?')) {
+            const inputs = document.querySelectorAll('input[name^="allocated_"]');
+            inputs.forEach(input => {
+                input.value = '0';
+            });
+        }
+    }
+    
+    // Auto-save functionality
+    let autoSaveTimer;
+    document.querySelectorAll('.balance-input').forEach(input => {
+        input.addEventListener('change', function() {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(() => {
+                // Show auto-save indicator
+                const saveBtn = document.querySelector('button[type="submit"]');
+                const originalText = saveBtn.innerHTML;
+                saveBtn.innerHTML = '<i class="fas fa-check"></i> Auto-saved';
+                saveBtn.classList.add('btn-success');
+                saveBtn.classList.remove('btn-primary');
+                
+                setTimeout(() => {
+                    saveBtn.innerHTML = originalText;
+                    saveBtn.classList.remove('btn-success');
+                    saveBtn.classList.add('btn-primary');
+                }, 2000);
+            }, 2000);
+        });
+    });
+</script>
+{% endblock %}

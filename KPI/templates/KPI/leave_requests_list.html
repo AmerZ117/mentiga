@@ -1,0 +1,274 @@
+{% extends 'KPI/base.html' %}
+{% load static %}
+
+{% block title %}Leave Requests Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-section {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .request-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-left: 4px solid #007bff;
+    }
+    
+    .status-badge {
+        padding: 8px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: bold;
+    }
+    
+    .status-draft { background: #e9ecef; color: #495057; }
+    .status-submitted { background: #fff3cd; color: #856404; }
+    .status-first_approval_pending { background: #d1ecf1; color: #0c5460; }
+    .status-first_approved { background: #d4edda; color: #155724; }
+    .status-second_approval_pending { background: #fff3cd; color: #856404; }
+    .status-approved { background: #d4edda; color: #155724; }
+    .status-rejected { background: #f8d7da; color: #721c24; }
+    .status-cancelled { background: #e2e3e5; color: #383d41; }
+    
+    .priority-high { border-left-color: #dc3545; }
+    .priority-medium { border-left-color: #ffc107; }
+    .priority-low { border-left-color: #28a745; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Leave Requests Management</h1>
+                <div>
+                    <a href="{% url 'KPI:leave_management_dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filter-section">
+        <h5 class="mb-3">
+            <i class="fas fa-filter"></i> Filters
+        </h5>
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="status_filter" class="form-label">Status</label>
+                <select name="status" id="status_filter" class="form-select">
+                    <option value="">All Statuses</option>
+                    <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
+                    <option value="submitted" {% if status_filter == 'submitted' %}selected{% endif %}>Submitted</option>
+                    <option value="first_approval_pending" {% if status_filter == 'first_approval_pending' %}selected{% endif %}>First Approval Pending</option>
+                    <option value="first_approved" {% if status_filter == 'first_approved' %}selected{% endif %}>First Level Approved</option>
+                    <option value="second_approval_pending" {% if status_filter == 'second_approval_pending' %}selected{% endif %}>Second Approval Pending</option>
+                    <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                    <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="department_filter" class="form-label">Department</label>
+                <select name="department" id="department_filter" class="form-select">
+                    <option value="">All Departments</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept.id }}" {% if department_filter == dept.id|stringformat:"s" %}selected{% endif %}>
+                        {{ dept.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="date_from" class="form-label">From Date</label>
+                <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
+            </div>
+            <div class="col-md-2">
+                <label for="date_to" class="form-label">To Date</label>
+                <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Filter
+                    </button>
+                    <a href="{% url 'KPI:leave_requests_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i> Clear
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results Summary -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <p class="mb-0">
+                    Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} results
+                </p>
+                <div>
+                    <span class="badge bg-primary">{{ page_obj.paginator.count }} Total Requests</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leave Requests List -->
+    {% if page_obj %}
+        {% for request in page_obj %}
+        <div class="request-card">
+            <div class="row align-items-center">
+                <div class="col-md-2">
+                    <div class="d-flex flex-column">
+                        <strong class="text-primary">{{ request.employee.full_name }}</strong>
+                        <small class="text-muted">{{ request.employee.employee_id }}</small>
+                        <small class="text-muted">{{ request.employee.department.name }}</small>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="d-flex flex-column">
+                        <strong>{{ request.leave_type_display }}</strong>
+                        <small class="text-muted">{{ request.total_days }} days</small>
+                        {% if request.is_half_day %}
+                        <small class="text-muted">{{ request.half_day_type }} half-day</small>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="d-flex flex-column">
+                        <strong>{{ request.start_date|date:"M d, Y" }}</strong>
+                        <small class="text-muted">to {{ request.end_date|date:"M d, Y" }}</small>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <span class="status-badge status-{{ request.status }}">
+                        {{ request.get_status_display }}
+                    </span>
+                    <br>
+                    <small class="text-muted">{{ request.submitted_at|date:"M d, Y" }}</small>
+                </div>
+                <div class="col-md-2">
+                    <div class="d-flex flex-column">
+                        <small class="text-muted">Contact during leave:</small>
+                        <small>{{ request.contact_during_leave|default:"Not specified" }}</small>
+                        {% if request.contact_phone %}
+                        <small class="text-muted">{{ request.contact_phone }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-2 text-end">
+                    <div class="btn-group" role="group">
+                        <a href="{% url 'KPI:leave_request_detail' request.id %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+                        {% if request.status == 'approved' %}
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">
+                                <i class="fas fa-download"></i> Download
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'KPI:generate_leave_document' request.id %}?format=pdf">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'KPI:generate_leave_document' request.id %}?format=docx">
+                                    <i class="fas fa-file-word"></i> Word Document
+                                </a></li>
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Reason Preview -->
+            {% if request.reason %}
+            <div class="row mt-3">
+                <div class="col-12">
+                    <small class="text-muted"><strong>Reason:</strong></small>
+                    <p class="mb-0 mt-1">{{ request.reason|truncatewords:20 }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="Leave requests pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}{% if department_filter %}&department={{ department_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if department_filter %}&department={{ department_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if department_filter %}&department={{ department_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if department_filter %}&department={{ department_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if department_filter %}&department={{ department_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+    {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+            <h4 class="text-muted">No Leave Requests Found</h4>
+            <p class="text-muted">Try adjusting your filters or check back later.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-submit form when filters change
+    document.getElementById('status_filter').addEventListener('change', function() {
+        this.form.submit();
+    });
+    
+    document.getElementById('department_filter').addEventListener('change', function() {
+        this.form.submit();
+    });
+</script>
+{% endblock %}

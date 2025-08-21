@@ -1,0 +1,394 @@
+{% extends 'KPI/base.html' %}
+{% load static %}
+
+{% block title %}Leave Request Detail - {{ leave_request.employee.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-card {
+        background: white;
+        border-radius: 10px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .status-badge {
+        padding: 10px 15px;
+        border-radius: 25px;
+        font-size: 1rem;
+        font-weight: bold;
+    }
+    
+    .status-draft { background: #e9ecef; color: #495057; }
+    .status-submitted { background: #fff3cd; color: #856404; }
+    .status-first_approval_pending { background: #d1ecf1; color: #0c5460; }
+    .status-first_approved { background: #d4edda; color: #155724; }
+    .status-second_approval_pending { background: #fff3cd; color: #856404; }
+    .status-approved { background: #d4edda; color: #155724; }
+    .status-rejected { background: #f8d7da; color: #721c24; }
+    .status-cancelled { background: #e2e3e5; color: #383d41; }
+    
+    .approval-progress {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .progress-step {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .progress-step.completed {
+        color: #28a745;
+    }
+    
+    .progress-step.current {
+        color: #007bff;
+        font-weight: bold;
+    }
+    
+    .progress-step.pending {
+        color: #6c757d;
+    }
+    
+    .step-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 15px;
+        font-size: 1.2rem;
+    }
+    
+    .step-icon.completed {
+        background: #28a745;
+        color: white;
+    }
+    
+    .step-icon.current {
+        background: #007bff;
+        color: white;
+    }
+    
+    .step-icon.pending {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .approval-form {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        border: 2px solid #dee2e6;
+    }
+    
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .info-row:last-child {
+        border-bottom: none;
+    }
+    
+    .info-label {
+        font-weight: bold;
+        color: #495057;
+        min-width: 150px;
+    }
+    
+    .info-value {
+        color: #212529;
+        text-align: right;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Leave Request Detail</h1>
+                <div>
+                    <a href="{% url 'KPI:leave_requests_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                    {% if leave_request.status == 'approved' %}
+                    <div class="btn-group" role="group">
+                        <a href="{% url 'KPI:generate_leave_document' leave_request.id %}?format=pdf" class="btn btn-success">
+                            <i class="fas fa-file-pdf"></i> Download PDF
+                        </a>
+                        <a href="{% url 'KPI:generate_leave_document' leave_request.id %}?format=docx" class="btn btn-info">
+                            <i class="fas fa-file-word"></i> Download Word
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status and Progress -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="detail-card">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h4 class="mb-2">{{ leave_request.employee.full_name }}</h4>
+                        <p class="text-muted mb-0">
+                            {{ leave_request.employee.employee_id }} • {{ leave_request.employee.department.name }} • {{ leave_request.employee.position }}
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <span class="status-badge status-{{ leave_request.status }}">
+                            {{ leave_request.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="detail-card text-center">
+                <h5 class="mb-2">Approval Progress</h5>
+                <div class="progress mb-2" style="height: 10px;">
+                    <div class="progress-bar" role="progressbar" 
+                         style="width: {{ leave_request.approval_progress }}%"></div>
+                </div>
+                <small class="text-muted">{{ leave_request.approval_progress }}% Complete</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Leave Details -->
+        <div class="col-md-8">
+            <div class="detail-card">
+                <h5 class="mb-3">
+                    <i class="fas fa-calendar-alt"></i> Leave Details
+                </h5>
+                
+                <div class="info-row">
+                    <span class="info-label">Leave Type:</span>
+                    <span class="info-value">{{ leave_request.leave_type_display }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Start Date:</span>
+                    <span class="info-value">{{ leave_request.start_date|date:"l, F d, Y" }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">End Date:</span>
+                    <span class="info-value">{{ leave_request.end_date|date:"l, F d, Y" }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Total Days:</span>
+                    <span class="info-value">{{ leave_request.total_days }} days</span>
+                </div>
+                
+                {% if leave_request.is_half_day %}
+                <div class="info-row">
+                    <span class="info-label">Half Day:</span>
+                    <span class="info-value">{{ leave_request.half_day_type|title }}</span>
+                </div>
+                {% endif %}
+                
+                <div class="info-row">
+                    <span class="info-label">Reason:</span>
+                    <span class="info-value text-start">{{ leave_request.reason }}</span>
+                </div>
+                
+                {% if leave_request.notes %}
+                <div class="info-row">
+                    <span class="info-label">Additional Notes:</span>
+                    <span class="info-value text-start">{{ leave_request.notes }}</span>
+                </div>
+                {% endif %}
+                
+                <div class="info-row">
+                    <span class="info-label">Submitted:</span>
+                    <span class="info-value">{{ leave_request.submitted_at|date:"F d, Y at g:i A" }}</span>
+                </div>
+            </div>
+
+            <!-- Emergency Contact -->
+            <div class="detail-card">
+                <h5 class="mb-3">
+                    <i class="fas fa-phone"></i> Emergency Contact During Leave
+                </h5>
+                
+                <div class="info-row">
+                    <span class="info-label">Contact Person:</span>
+                    <span class="info-value">{{ leave_request.contact_during_leave|default:"Not specified" }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Phone:</span>
+                    <span class="info-value">{{ leave_request.contact_phone|default:"Not specified" }}</span>
+                </div>
+                
+                {% if leave_request.contact_email %}
+                <div class="info-row">
+                    <span class="info-label">Email:</span>
+                    <span class="info-value">{{ leave_request.contact_email }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Attachments -->
+            {% if leave_request.attachments %}
+            <div class="detail-card">
+                <h5 class="mb-3">
+                    <i class="fas fa-paperclip"></i> Supporting Documents
+                </h5>
+                <a href="{{ leave_request.attachments.url }}" class="btn btn-outline-primary" target="_blank">
+                    <i class="fas fa-download"></i> Download Attachment
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Approval Workflow -->
+        <div class="col-md-4">
+            <div class="approval-progress">
+                <h5 class="mb-3">
+                    <i class="fas fa-tasks"></i> Approval Workflow
+                </h5>
+                
+                <!-- Step 1: Submission -->
+                <div class="progress-step {% if leave_request.status != 'draft' %}completed{% endif %}">
+                    <div class="step-icon {% if leave_request.status != 'draft' %}completed{% endif %}">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div>
+                        <strong>Request Submitted</strong>
+                        <br>
+                        <small>{{ leave_request.submitted_at|date:"M d, Y" }}</small>
+                    </div>
+                </div>
+                
+                <!-- Step 2: First Approval -->
+                <div class="progress-step 
+                    {% if leave_request.status in 'first_approved,second_approval_pending,approved' %}completed
+                    {% elif leave_request.status == 'first_approval_pending' %}current
+                    {% else %}pending{% endif %}">
+                    <div class="step-icon 
+                        {% if leave_request.status in 'first_approved,second_approval_pending,approved' %}completed
+                        {% elif leave_request.status == 'first_approval_pending' %}current
+                        {% else %}pending{% endif %}">
+                        {% if leave_request.status in 'first_approved,second_approval_pending,approved' %}
+                            <i class="fas fa-check"></i>
+                        {% elif leave_request.status == 'first_approval_pending' %}
+                            <i class="fas fa-clock"></i>
+                        {% else %}
+                            <i class="fas fa-hourglass-half"></i>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <strong>First Level Approval</strong>
+                        {% if leave_request.first_approver %}
+                        <br>
+                        <small>Approved by {{ leave_request.first_approver.full_name }}</small>
+                        <br>
+                        <small>{{ leave_request.first_approval_date|date:"M d, Y" }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Step 3: Second Approval -->
+                <div class="progress-step 
+                    {% if leave_request.status == 'approved' %}completed
+                    {% elif leave_request.status == 'second_approval_pending' %}current
+                    {% else %}pending{% endif %}">
+                    <div class="step-icon 
+                        {% if leave_request.status == 'approved' %}completed
+                        {% elif leave_request.status == 'second_approval_pending' %}current
+                        {% else %}pending{% endif %}">
+                        {% if leave_request.status == 'approved' %}
+                            <i class="fas fa-check"></i>
+                        {% elif leave_request.status == 'second_approval_pending' %}
+                            <i class="fas fa-clock"></i>
+                        {% else %}
+                            <i class="fas fa-hourglass-half"></i>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <strong>Final Approval</strong>
+                        {% if leave_request.second_approver %}
+                        <br>
+                        <small>Approved by {{ leave_request.second_approver.full_name }}</small>
+                        <br>
+                        <small>{{ leave_request.second_approval_date|date:"M d, Y" }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Approval Form -->
+            {% if can_approve and approval_form %}
+            <div class="approval-form">
+                <h5 class="mb-3">
+                    <i class="fas fa-gavel"></i> Approval Action
+                </h5>
+                <form method="post" action="{% url 'KPI:leave_request_approve' leave_request.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="approval_level" value="{{ approval_level }}">
+                    
+                    <div class="mb-3">
+                        {% for choice in approval_form.action %}
+                        <div class="form-check">
+                            {{ choice.tag }}
+                            <label class="form-check-label" for="{{ choice.id_for_label }}">
+                                {{ choice.choice_label }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ approval_form.comments.id_for_label }}" class="form-label">Comments</label>
+                        {{ approval_form.comments }}
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-check"></i> Submit Decision
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+
+            <!-- Rejection Details -->
+            {% if leave_request.status == 'rejected' %}
+            <div class="detail-card">
+                <h5 class="mb-3 text-danger">
+                    <i class="fas fa-times-circle"></i> Rejection Details
+                </h5>
+                <p><strong>Rejected by:</strong> {{ leave_request.rejected_by.full_name }}</p>
+                <p><strong>Date:</strong> {{ leave_request.rejection_date|date:"M d, Y" }}</p>
+                <p><strong>Reason:</strong> {{ leave_request.rejection_reason }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh page every 2 minutes to show status updates
+    setInterval(function() {
+        location.reload();
+    }, 120000);
+</script>
+{% endblock %}

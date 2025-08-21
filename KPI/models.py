@@ -4,6 +4,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 import uuid
+from datetime import date
 
 class Department(models.Model):
     name = models.CharField(max_length=100)
@@ -550,8 +551,67 @@ class EmployeeTrainingRequest(models.Model):
         verbose_name = "Employee Training Request"
         verbose_name_plural = "Employee Training Requests"
 
+class LeaveType(models.Model):
+    """Leave types with default allocations"""
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    default_allocation = models.DecimalField(max_digits=5, decimal_places=1, help_text="Default annual allocation in days")
+    is_active = models.BooleanField(default=True)
+    requires_approval = models.BooleanField(default=True)
+    color = models.CharField(max_length=7, default="#007bff", help_text="Hex color for display")
+    
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        ordering = ['name']
+
+class LeaveBalance(models.Model):
+    """Employee leave balances by type and year"""
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='leave_balances')
+    leave_type = models.ForeignKey(LeaveType, on_delete=models.CASCADE)
+    year = models.IntegerField()
+    allocated_days = models.DecimalField(max_digits=5, decimal_places=1, default=0)
+    used_days = models.DecimalField(max_digits=5, decimal_places=1, default=0)
+    pending_days = models.DecimalField(max_digits=5, decimal_places=1, default=0)
+    carried_over_days = models.DecimalField(max_digits=5, decimal_places=1, default=0)
+    
+    class Meta:
+        unique_together = ['employee', 'leave_type', 'year']
+        ordering = ['-year', 'leave_type__name']
+    
+    @property
+    def remaining_days(self):
+        return self.allocated_days + self.carried_over_days - self.used_days - self.pending_days
+    
+    @property
+    def total_available(self):
+        return self.allocated_days + self.carried_over_days
+    
+    def __str__(self):
+        return f"{self.employee.full_name} - {self.leave_type.name} ({self.year})"
+
+class LeaveApprovalLevel(models.Model):
+    """Approval levels for leave requests"""
+    APPROVAL_LEVELS = [
+        (1, 'First Level Approval'),
+        (2, 'Second Level Approval'),
+    ]
+    
+    level = models.IntegerField(choices=APPROVAL_LEVELS)
+    department = models.ForeignKey(Department, on_delete=models.CASCADE)
+    approver_role = models.CharField(max_length=100, help_text="Role required for approval (e.g., Manager, HR Manager)")
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        unique_together = ['level', 'department']
+        ordering = ['level', 'department__name']
+    
+    def __str__(self):
+        return f"Level {self.level} - {self.department.name} ({self.approver_role})"
+
 class EmployeeLeaveRequest(models.Model):
-    """Employee leave requests"""
+    """Enhanced employee leave requests with approval workflow"""
     LEAVE_TYPES = [
         ('annual', 'Annual Leave'),
         ('sick', 'Sick Leave'),
@@ -564,32 +624,131 @@ class EmployeeLeaveRequest(models.Model):
     ]
     
     REQUEST_STATUS = [
-        ('pending', 'Pending'),
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted'),
+        ('first_approval_pending', 'First Approval Pending'),
+        ('first_approved', 'First Level Approved'),
+        ('second_approval_pending', 'Second Approval Pending'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
         ('cancelled', 'Cancelled'),
     ]
     
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='leave_requests')
-    leave_type = models.CharField(max_length=20, choices=LEAVE_TYPES, default='annual')
+    leave_type = models.ForeignKey(LeaveType, on_delete=models.CASCADE, null=True, blank=True)
+    leave_type_other = models.CharField(max_length=100, blank=True, help_text="Specify if 'Other' is selected")
     start_date = models.DateField()
     end_date = models.DateField()
     total_days = models.DecimalField(max_digits=5, decimal_places=1, help_text="Total leave days requested")
     reason = models.TextField(help_text="Reason for leave request")
     contact_during_leave = models.CharField(max_length=100, blank=True, help_text="Emergency contact during leave")
     contact_phone = models.CharField(max_length=20, blank=True)
-    status = models.CharField(max_length=20, choices=REQUEST_STATUS, default='pending')
+    contact_email = models.EmailField(blank=True, help_text="Emergency contact email")
+    
+    # Approval workflow
+    status = models.CharField(max_length=30, choices=REQUEST_STATUS, default='draft')
     submitted_at = models.DateTimeField(auto_now_add=True)
-    reviewed_by = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_leave_requests')
-    review_date = models.DateTimeField(null=True, blank=True)
-    review_comments = models.TextField(blank=True)
-    approved_date = models.DateTimeField(null=True, blank=True)
+    
+    # First level approval
+    first_approver = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='first_approved_leaves')
+    first_approval_date = models.DateTimeField(null=True, blank=True)
+    first_approval_comments = models.TextField(blank=True)
+    
+    # Second level approval
+    second_approver = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='second_approved_leaves')
+    second_approval_date = models.DateTimeField(null=True, blank=True)
+    second_approval_comments = models.TextField(blank=True)
+    
+    # Rejection details
+    rejected_by = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='rejected_leaves')
+    rejection_date = models.DateTimeField(null=True, blank=True)
     rejection_reason = models.TextField(blank=True)
     
+    # Additional fields
+    is_half_day = models.BooleanField(default=False, help_text="Is this a half-day leave?")
+    half_day_type = models.CharField(max_length=10, choices=[('morning', 'Morning'), ('afternoon', 'Afternoon')], blank=True)
+    attachments = models.FileField(upload_to='leave_attachments/', null=True, blank=True, help_text="Supporting documents")
+    notes = models.TextField(blank=True, help_text="Additional notes")
+    
+    # System fields
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
     def __str__(self):
-        return f"{self.leave_type.title()} Leave - {self.employee.full_name}"
+        return f"{self.get_leave_type_display()} Leave - {self.employee.full_name} ({self.start_date} to {self.end_date})"
+    
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.start_date and self.end_date:
+            if self.start_date > self.end_date:
+                raise ValidationError("Start date cannot be after end date.")
+            if self.start_date < date.today():
+                raise ValidationError("Start date cannot be in the past.")
+    
+    def save(self, *args, **kwargs):
+        # Auto-calculate total days if not provided
+        if not self.total_days and self.start_date and self.end_date:
+            delta = self.end_date - self.start_date
+            self.total_days = delta.days + 1  # Include both start and end dates
+        
+        # Set leave type display
+        if self.leave_type_other and not self.leave_type:
+            self.leave_type_other = self.leave_type_other.strip()
+        
+        super().save(*args, **kwargs)
+    
+    @property
+    def leave_type_display(self):
+        if self.leave_type:
+            return self.leave_type.name
+        return self.leave_type_other or 'Other'
+    
+    @property
+    def is_approved(self):
+        return self.status == 'approved'
+    
+    @property
+    def is_pending(self):
+        return self.status in ['submitted', 'first_approval_pending', 'first_approved', 'second_approval_pending']
+    
+    @property
+    def can_edit(self):
+        return self.status in ['draft', 'submitted']
+    
+    @property
+    def approval_progress(self):
+        """Return approval progress percentage"""
+        if self.status == 'draft':
+            return 0
+        elif self.status == 'submitted':
+            return 20
+        elif self.status == 'first_approval_pending':
+            return 40
+        elif self.status == 'first_approved':
+            return 60
+        elif self.status == 'second_approval_pending':
+            return 80
+        elif self.status == 'approved':
+            return 100
+        elif self.status == 'rejected':
+            return 0
+        return 0
     
     class Meta:
         ordering = ['-submitted_at']
         verbose_name = "Employee Leave Request"
         verbose_name_plural = "Employee Leave Requests"
+
+class LeaveRequestDocument(models.Model):
+    """Generated documents for approved leave requests"""
+    leave_request = models.OneToOneField(EmployeeLeaveRequest, on_delete=models.CASCADE, related_name='document')
+    document_type = models.CharField(max_length=20, choices=[('pdf', 'PDF'), ('docx', 'Word Document')])
+    file_path = models.CharField(max_length=500)
+    generated_at = models.DateTimeField(auto_now_add=True)
+    generated_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    
+    def __str__(self):
+        return f"{self.leave_request} - {self.document_type.upper()}"
+    
+    class Meta:
+        ordering = ['-generated_at']
